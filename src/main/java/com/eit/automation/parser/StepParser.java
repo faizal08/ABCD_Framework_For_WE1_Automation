@@ -213,6 +213,25 @@ public class StepParser {
 
 		// 9. GRID
 		VERIFY_PATTERNS.add(new StepPattern(".*\\bverify\\s+grid\\b.*", "verifygridvalue"));
+
+		// ========================================
+		// MOBILE SPECIFIC ACTIONS
+		// ========================================
+
+		// Swipe / Scroll (e.g., "swipe up", "scroll down")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(swipe|scroll_mobile)\\b.*", "swipe"));
+
+		// Long Press (e.g., "long press on the logo")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(long_press|longpress)\\b.*", "long_press"));
+
+		// Keyboard Management (e.g., "hide keyboard", "close keypad")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(hide\\s+keyboard|close\\s+keyboard|hide_keyboard)\\b.*", "hide_keyboard"));
+
+		// Device Back Button (e.g., "press back", "mobile back")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(mobile_back|device_back)\\b.*", "mobile_back"));
+
+		// Tap (Alternative to click for mobile clarity)
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap)\\b.*", "tap"));
 	}
 
 	/**
