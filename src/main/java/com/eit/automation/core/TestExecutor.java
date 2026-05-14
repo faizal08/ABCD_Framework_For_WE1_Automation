@@ -314,9 +314,9 @@ public class TestExecutor {
 					}
 				}
 
-				// --- NEW: GUARD OVERLAY ---
-				// Only update the browser overlay if we are NOT on a mobile device
-				if (driverPool.containsKey("web") && !(driver instanceof io.appium.java_client.AppiumDriver)) {
+				// --- UPDATED: UNIVERSAL OVERLAY ---
+				// Always update the overlay as long as the 'web' session exists to display it
+				if (driverPool.containsKey("web")) {
 					updateBrowserOverlay(sheetName, testCaseName, stepNumber, step);
 				}
 
