@@ -215,6 +215,16 @@ public class StepParser {
 		VERIFY_PATTERNS.add(new StepPattern(".*\\bverify\\s+grid\\b.*", "verifygridvalue"));
 
 		// ========================================
+        // 9. SWITCH / FRAMES / WINDOWS
+       // ========================================
+       // --- ADD THESE TWO LINES FOR MULTI-SESSION SUPPORT ---
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(switch_to|switchsession|switch_session|change_session)\\b.*", "switch_to"));
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(switch_to_user|switch_to_admin)\\b.*", "switch_to"));
+      // -----------------------------------------------------
+
+		ACTION_PATTERNS.add(new StepPattern(".*\\bswitch\\s+(to\\s+)?frame\\b.*", "switchtoframe"));
+
+		// ========================================
 		// MOBILE SPECIFIC ACTIONS
 		// ========================================
 

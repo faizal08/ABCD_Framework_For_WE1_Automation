@@ -166,28 +166,42 @@ public class TestExecutor {
 		log("📱 Initializing Mobile Emulator for Role: [" + role.toUpperCase() + "]");
 
 		try {
-			DesiredCapabilities caps = new DesiredCapabilities();
-			caps.setCapability("platformName", "Android");
-			caps.setCapability("automationName", "UiAutomator2");
+			// Use UiAutomator2Options instead of DesiredCapabilities to ensure W3C compliance
+			io.appium.java_client.android.options.UiAutomator2Options options = new io.appium.java_client.android.options.UiAutomator2Options();
 
-			// Pull details dynamically from the config we passed in the constructor
-			caps.setCapability("udid", config.getProperty(role + ".device.id"));
-			caps.setCapability("app", config.getProperty(role + ".apk.path"));
-			caps.setCapability("appPackage", config.getProperty(role + ".app.package"));
-			caps.setCapability("appActivity", config.getProperty(role + ".app.activity"));
-			caps.setCapability("noReset", true);
+			options.setPlatformName("Android");
+			options.setAutomationName("UiAutomator2");
+
+			// Pull details dynamically from config
+			// Note: .setApp(), .setUdid(), etc., automatically add the "appium:" prefix
+			options.setUdid(config.getProperty(role + ".device.id"));
+			options.setApp(config.getProperty(role + ".apk.path"));
+			options.setAppPackage(config.getProperty(role + ".app.package"));
+			options.setAppActivity(config.getProperty(role + ".app.activity"));
+			options.setNoReset(true);
 
 			URL url = new URL(config.getProperty("appium.url"));
-			WebDriver mobileDriver = new io.appium.java_client.android.AndroidDriver(url, caps);
+
+			// Initialize the driver with options
+			AndroidDriver mobileDriver = new AndroidDriver(url, options);
+
+			// --- GUARD FOR MOBILE APP LAUNCH ---
+			log("⏳ Waiting for app package [" + role + "] to launch...");
+			WebDriverWait launchWait = new WebDriverWait(mobileDriver, Duration.ofSeconds(20));
+
+			// This ensures the driver is fully initialized before returning
+			launchWait.until(d -> ((AndroidDriver)d).getCurrentPackage() != null);
 
 			// Add to our Universal Pool
 			driverPool.put(role, mobileDriver);
+
 			WebDriverWait mobileWait = new WebDriverWait(mobileDriver, Duration.ofSeconds(30));
-			waitPool.put(role, mobileWait); // Add this line!
-			// If this is the first driver being created, set it as the active one
+			waitPool.put(role, mobileWait);
+
+			// If this is the first driver being created, set it as active
 			if (this.driver == null) {
 				this.wait = mobileWait;
-				setDriver(mobileDriver);
+				this.driver = mobileDriver; // Direct assignment or use your setDriver method
 				this.currentSessionRole = role;
 			}
 
@@ -198,7 +212,6 @@ public class TestExecutor {
 			throw new RuntimeException(e);
 		}
 	}
-
 	/**
 	 * Refreshes handlers to point to the current active driver/wait objects
 	 */
@@ -265,6 +278,17 @@ public class TestExecutor {
 					logStepHeader(stepNumber, steps.size(), step);
 					try {
 						switchSession(step.getValue());
+
+						// REFRESH POINTERS: Ensure the run loop uses the new objects
+						this.driver = driverPool.get(step.getValue().toLowerCase());
+						this.wait = waitPool.get(step.getValue().toLowerCase());
+
+						// MOBILE STABILIZATION: Give Appium 3 seconds to bring the app to front
+						if (driver instanceof io.appium.java_client.AppiumDriver) {
+							log("  ⏳ Stabilizing Mobile Session...");
+							Thread.sleep(3000);
+						}
+
 						passedSteps++;
 						totalStepsExecuted++;
 
@@ -367,23 +391,33 @@ public class TestExecutor {
 	 */
 	public void switchSession(String role) {
 		String targetRole = role.toLowerCase();
+		log("🔄 SWITCHING CONTEXT: Moving focus to [" + targetRole.toUpperCase() + "]");
 
+		// 1. PROACTIVE CHECK: If session doesn't exist, try to initialize it
+		if (!driverPool.containsKey(targetRole)) {
+			log("⚠️ Session [" + targetRole + "] not found in pool. Attempting auto-initialization...");
+
+			if (targetRole.equals("web")) {
+				setupWebDriver();
+			} else {
+				// This triggers your Part 4 setupMobileDriver method
+				setupMobileDriver(targetRole);
+			}
+		}
+
+		// 2. ACTIVATE THE SESSION: Update the active pointers
 		if (driverPool.containsKey(targetRole)) {
-			log("🔄 SWITCHING CONTEXT: Moving focus to [" + targetRole.toUpperCase() + "]");
-
-			// Update the active pointers
 			this.driver = driverPool.get(targetRole);
 			this.wait = waitPool.get(targetRole);
 			this.currentSessionRole = targetRole;
 
-			// Re-attach all action handlers to the new driver
+			// 3. RE-WIRE HANDLERS: Attach ClickActions, InputActions etc. to the new driver
 			refreshActionHandlers();
 
-			log("✅ Context switched successfully.");
+			log("✅ Context switched successfully to [" + targetRole.toUpperCase() + "]");
 		} else {
-			log("❌ ERROR: Session '" + targetRole + "' has not been initialized!");
-			throw new RuntimeException("Session Role '" + targetRole + "' not found in Driver Pool. " +
-					"Ensure you initialized it using setupWebDriver() or setupMobileDriver().");
+			log("❌ CRITICAL ERROR: Failed to initialize session [" + targetRole + "]");
+			throw new RuntimeException("Could not switch to session: " + targetRole);
 		}
 	}
 
