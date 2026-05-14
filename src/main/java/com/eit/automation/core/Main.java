@@ -186,6 +186,10 @@ public class Main {
      * The actual loop that runs the test cases in the sheet.
      * UPDATED: Now supports Smart Session Management for Web and Mobile.
      */
+    /**
+     * The actual loop that runs the test cases in the sheet.
+     * UPDATED: Optimized for Universal Web + Mobile switching.
+     */
     private static void processSheetData(Sheet sheet, String sheetName, ReportGenerator reportGenerator) {
         System.out.println("\n📖 Processing Sheet: [" + sheetName + "]");
 
@@ -193,6 +197,7 @@ public class Main {
             executor.setCleanupMode(sheetName.equalsIgnoreCase("DataCleanUpSheet"));
         }
 
+        // Loop through rows in the Excel sheet
         for (int i = 1; i <= sheet.getLastRowNum(); i++) {
             Row row = sheet.getRow(i);
             if (row == null) continue;
@@ -204,6 +209,7 @@ public class Main {
             String testCaseName = testCaseCell.getStringCellValue().trim();
             String stepBlock = stepBlockCell.getStringCellValue().trim();
 
+            // 1. Filter Check
             String filterName = config.getProperty("filter.name");
             if (filterName != null && !testCaseName.toLowerCase().contains(filterName.toLowerCase().trim())) {
                 continue;
@@ -212,32 +218,42 @@ public class Main {
             String videoFileName = testCaseName.replaceAll("[^a-zA-Z0-9]", "_") + ".mp4";
 
             try {
-                // Video recording starts for the whole desktop (Captures Browser + Emulators)
-                System.out.println("🎥 Starting Video Recording: " + videoFileName);
-                videoRecorder.startRecording(reportGenerator.getReportDir(), videoFileName);
+                // 2. Video Start (Null safe check)
+                if (videoRecorder != null) {
+                    System.out.println("🎥 Starting Video Recording: " + videoFileName);
+                    videoRecorder.startRecording(reportGenerator.getReportDir(), videoFileName);
+                }
 
-                // --- SMART SESSION INITIALIZATION ---
-                // We check if the test case is intended for Web or Mobile.
-                // If it's a standard web test and not logged in yet, we perform login.
-                if (!isWebLoggedIn && !stepBlock.toLowerCase().contains("switch_to")) {
+                // 3. SMART SESSION INITIALIZATION (The Fix)
+                // Logic: Perform login if we aren't logged in yet,
+                // EXCEPT if the test case is only for mobile (doesn't use the Web Admin at all)
+                boolean isPurelyMobile = stepBlock.toLowerCase().startsWith("switch_to") &&
+                        !stepBlock.toLowerCase().contains("switch_to: web");
+
+                if (!isWebLoggedIn && !isPurelyMobile) {
                     performInitialLogin(executor);
                     isWebLoggedIn = true;
-                } else if (isWebLoggedIn) {
-                    // If already logged in, just refresh the dashboard to clean the state
+                } else if (isWebLoggedIn && executor.getDriverPool().containsKey("web")) {
+                    // If already logged in and using web, navigate to dashboard to reset state
                     String dashboardUrl = config.getProperty("dashboard.url");
-                    if (dashboardUrl != null && !dashboardUrl.isEmpty() && activeSessions.contains("web")) {
+                    if (dashboardUrl != null && !dashboardUrl.isEmpty()) {
                         executor.getDriverPool().get("web").get(dashboardUrl);
                     }
                 }
 
+                // 4. Run the actual test steps
                 executeTestCase(sheetName, testCaseName, stepBlock, executor, reportGenerator);
 
             } catch (Exception e) {
                 System.err.println("❌ Error in " + testCaseName + ": " + e.getMessage());
+                e.printStackTrace(); // Added for better debugging
             } finally {
+                // 5. Cleanup Video for this specific test case
                 try {
-                    videoRecorder.stopRecording();
-                    reportGenerator.addVideoToTestCase(videoFileName);
+                    if (videoRecorder != null) {
+                        videoRecorder.stopRecording();
+                        reportGenerator.addVideoToTestCase(videoFileName);
+                    }
                 } catch (Exception ignored) {}
             }
         }
@@ -301,44 +317,34 @@ public class Main {
     /**
      * Execute a single test case
      */
-    private static void executeTestCase(String sheetName, String testCaseName, String stepBlock, TestExecutor executor,
-                                        ReportGenerator reportGenerator) {
-        System.out.println("\n=== 🧪 Running: " + testCaseName + " ===");
-
-        // Parse steps
+    private static void executeTestCase(String sheetName, String testCaseName, String stepBlock, TestExecutor executor, ReportGenerator reportGenerator) {
         List<TestStep> steps = StepParser.parseSteps(stepBlock);
+        if (steps.isEmpty()) return;
 
-        if (steps.isEmpty()) {
-            System.err.println("❌ No valid steps parsed!");
-            reportGenerator.startTestCase(testCaseName);
-            reportGenerator.endTestCase(false);
-            return;
-        }
-
-        // --- NEW: UNIVERSAL SESSION AUTO-STARTER ---
-        // Look at the first few steps. If we see a 'switch_to' for a session
-        // that isn't active yet, we initialize it right now.
         for (TestStep step : steps) {
             String action = step.getAction().toLowerCase();
-            String role = (step.getValue() != null) ? step.getValue().toLowerCase() : "";
+            // Clean the role name immediately
+            String role = (step.getValue() != null) ? step.getValue().toLowerCase().trim() : "";
 
             if ((action.equals("switch_to") || action.equals("switchsession")) && !role.isEmpty()) {
-                if (!activeSessions.contains(role)) {
-                    System.out.println("🚀 Auto-Initializing required session: [" + role.toUpperCase() + "]");
-
+                // Use the executor's pool as the ONLY source of truth
+                if (!executor.getDriverPool().containsKey(role)) {
+                    System.out.println("🚀 Universal Switch: Initializing [" + role.toUpperCase() + "]");
                     if (role.equals("web")) {
                         executor.setupWebDriver();
                     } else {
-                        // This calls your Mobile setup for 'user' or 'driver'
                         executor.setupMobileDriver(role);
                     }
-                    activeSessions.add(role);
                 }
             }
         }
+        // 2. SET INITIAL FOCUS
+        // If the first step isn't a switch, ensure we are on 'web' by default
+        String firstAction = steps.get(0).getAction().toLowerCase();
+        if (!firstAction.contains("switch")) {
+            executor.switchSession("web");
+        }
 
-        // Execute the steps using the updated TestExecutor
-        // It will now handle the switching seamlessly.
         executor.run(sheetName, steps, testCaseName);
     }
     /**
@@ -351,7 +357,7 @@ public class Main {
 
         try {
             // --- STEP 1: ENSURE WEB SESSION IS INITIALIZED ---
-            if (!activeSessions.contains("web")) {
+            if (!executor.getDriverPool().containsKey("web")) {
                 System.out.println("🌐 Initializing Web Driver for Admin Login...");
                 executor.setupWebDriver(); // This starts Chrome and adds it to the pool
                 activeSessions.add("web");

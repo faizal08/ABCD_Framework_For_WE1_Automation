@@ -84,8 +84,6 @@ public class TestExecutor {
 		log("║                        INITIALIZING UNIVERSAL EXECUTOR                         ║");
 		log("╚════════════════════════════════════════════════════════════════════════════════╝");
 
-		// Start with a default Web session (Super Admin)
-		initializeWebDriver("web");
 	}
 
 	public TestExecutor(ReportGenerator reportGenerator, Properties config) {
@@ -101,9 +99,6 @@ public class TestExecutor {
 		log("╔════════════════════════════════════════════════════════════════════════════════╗");
 		log("║                        INITIALIZING UNIVERSAL EXECUTOR                         ║");
 		log("╚════════════════════════════════════════════════════════════════════════════════╝");
-
-		// Setup initial default session
-		initializeWebDriver("web");
 
 		log("✓ Report generator configured");
 		log("");
@@ -151,27 +146,92 @@ public class TestExecutor {
 		log("✓ Web Session [" + role + "] is active and ready");
 	}
 
+	public void setupWebDriver() {
+		log("🌐 Initializing Chrome Browser...");
+		initializeWebDriver("web");
+		// Use your existing browser setup logic here
+		// Example:
+		// WebDriver webDriver = new ChromeDriver();
+		// setDriver(webDriver);
+		// this.driverPool.put("web", webDriver);
+
+		// Note: Ensure your existing setup code is moved into this method
+	}
+
+	/**
+	 * Initializes a Mobile (Android/Appium) session for a specific role.
+	 * @param role 'user' or 'driver'
+	 */
+	public void setupMobileDriver(String role) {
+		log("📱 Initializing Mobile Emulator for Role: [" + role.toUpperCase() + "]");
+
+		try {
+			DesiredCapabilities caps = new DesiredCapabilities();
+			caps.setCapability("platformName", "Android");
+			caps.setCapability("automationName", "UiAutomator2");
+
+			// Pull details dynamically from the config we passed in the constructor
+			caps.setCapability("udid", config.getProperty(role + ".device.id"));
+			caps.setCapability("app", config.getProperty(role + ".apk.path"));
+			caps.setCapability("appPackage", config.getProperty(role + ".app.package"));
+			caps.setCapability("appActivity", config.getProperty(role + ".app.activity"));
+			caps.setCapability("noReset", true);
+
+			URL url = new URL(config.getProperty("appium.url"));
+			WebDriver mobileDriver = new io.appium.java_client.android.AndroidDriver(url, caps);
+
+			// Add to our Universal Pool
+			driverPool.put(role, mobileDriver);
+			WebDriverWait mobileWait = new WebDriverWait(mobileDriver, Duration.ofSeconds(30));
+			waitPool.put(role, mobileWait); // Add this line!
+			// If this is the first driver being created, set it as the active one
+			if (this.driver == null) {
+				this.wait = mobileWait;
+				setDriver(mobileDriver);
+				this.currentSessionRole = role;
+			}
+
+			log("✅ Mobile session started for " + role);
+
+		} catch (Exception e) {
+			log("❌ Failed to start Mobile session for " + role + ": " + e.getMessage());
+			throw new RuntimeException(e);
+		}
+	}
+
 	/**
 	 * Refreshes handlers to point to the current active driver/wait objects
 	 */
 	private void refreshActionHandlers() {
+		// 1. Common Actions (Both Web and Mobile)
 		this.waitActions = new WaitActions(driver, wait);
 		this.clickActions = new ClickActions(driver, wait, waitActions);
 		this.inputActions = new InputActions(driver, wait, waitActions);
 		this.verificationActions = new VerificationActions(driver, wait, waitActions);
 
-		// Only initialize Web-specific actions if it's not a mobile driver
-		if (!(driver instanceof AppiumDriver)) {
+		// 2. Web-Specific Actions
+		if (!(driver instanceof io.appium.java_client.AppiumDriver)) {
 			this.fileActions = new FileActions(driver, wait, waitActions);
 			this.toastActions = new ToastActions(driver, wait, waitActions);
 			this.scrollActions = new ScrollActions(driver, wait, waitActions);
 			this.autoItActions = new AutoItActions(driver, wait, waitActions);
-		} else {
-			// Initialize Mobile Specifics
-			this.mobileActions = new MobileActions((AppiumDriver) driver, wait);
+
+			// CRITICAL: Disable mobile actions when on Web
+			this.mobileActions = null;
+			log("  • Handlers refreshed for WEB context");
+		}
+		// 3. Mobile-Specific Actions
+		else {
+			this.mobileActions = new MobileActions((io.appium.java_client.AppiumDriver) driver, wait);
+
+			// CRITICAL: Disable web-only actions when on Mobile
+			this.fileActions = null;
+			this.toastActions = null;
+			this.scrollActions = null;
+			this.autoItActions = null;
+			log("  • Handlers refreshed for MOBILE context");
 		}
 	}
-
 	/**
 	 * Execute list of test steps - CONTINUES ON ERROR, DOESN'T CLOSE BROWSER
 	 */
@@ -200,30 +260,41 @@ public class TestExecutor {
 				int stepNumber = i + 1;
 				String action = step.getAction().toLowerCase();
 
-				// --- NEW: UNIVERSAL SESSION SWITCHING ---
-				// If the action is 'switch_to', we handle it here before executeStep
+				// --- 1. SESSION SWITCHING (With Reporting Fix) ---
 				if (action.equals("switch_to") || action.equals("switchsession")) {
 					logStepHeader(stepNumber, steps.size(), step);
-					switchSession(step.getValue()); // Role name like 'user' or 'driver'
-					passedSteps++;
-					totalStepsExecuted++;
-					continue;
+					try {
+						switchSession(step.getValue());
+						passedSteps++;
+						totalStepsExecuted++;
+
+						// Add this so the report shows the switch was successful!
+						if (reportGenerator != null) {
+							reportGenerator.logStep(stepNumber, step, "PASSED", "Switched to: " + step.getValue(), driver);
+						}
+						continue;
+					} catch (Exception e) {
+						// If the switch fails (e.g. emulator not open), we MUST fail the test
+						log("❌ Session switch failed: " + e.getMessage());
+						if (reportGenerator != null) {
+							reportGenerator.logStep(stepNumber, step, "FAILED", "Switch failed: " + e.getMessage(), driver);
+						}
+						break;
+					}
 				}
 
 				// --- NEW: GUARD OVERLAY ---
 				// Only update the browser overlay if we are NOT on a mobile device
-				if (!(driver instanceof AppiumDriver)) {
+				if (driverPool.containsKey("web") && !(driver instanceof io.appium.java_client.AppiumDriver)) {
 					updateBrowserOverlay(sheetName, testCaseName, stepNumber, step);
 				}
 
 				logStepHeader(stepNumber, steps.size(), step);
-
 				long stepStartTime = System.currentTimeMillis();
 
 				try {
 					executeStep(step);
 					passedSteps++;
-
 					long stepDuration = System.currentTimeMillis() - stepStartTime;
 					logStepSuccess(stepNumber, stepDuration);
 
@@ -1291,55 +1362,7 @@ public class TestExecutor {
 	/**
 	 * Initializes a standard Web (Chrome) session and adds it to the pool.
 	 */
-	public void setupWebDriver() {
-		log("🌐 Initializing Chrome Browser...");
-		// Use your existing browser setup logic here
-		// Example:
-		// WebDriver webDriver = new ChromeDriver();
-		// setDriver(webDriver);
-		// this.driverPool.put("web", webDriver);
 
-		// Note: Ensure your existing setup code is moved into this method
-	}
-
-	/**
-	 * Initializes a Mobile (Android/Appium) session for a specific role.
-	 * @param role 'user' or 'driver'
-	 */
-	public void setupMobileDriver(String role) {
-		log("📱 Initializing Mobile Emulator for Role: [" + role.toUpperCase() + "]");
-
-		try {
-			DesiredCapabilities caps = new DesiredCapabilities();
-			caps.setCapability("platformName", "Android");
-			caps.setCapability("automationName", "UiAutomator2");
-
-			// Pull details dynamically from the config we passed in the constructor
-			caps.setCapability("udid", config.getProperty(role + ".device.id"));
-			caps.setCapability("app", config.getProperty(role + ".apk.path"));
-			caps.setCapability("appPackage", config.getProperty(role + ".app.package"));
-			caps.setCapability("appActivity", config.getProperty(role + ".app.activity"));
-			caps.setCapability("noReset", true);
-
-			URL url = new URL(config.getProperty("appium.url"));
-			WebDriver mobileDriver = new io.appium.java_client.android.AndroidDriver(url, caps);
-
-			// Add to our Universal Pool
-			driverPool.put(role, mobileDriver);
-
-			// If this is the first driver being created, set it as the active one
-			if (this.driver == null) {
-				setDriver(mobileDriver);
-				this.currentSessionRole = role;
-			}
-
-			log("✅ Mobile session started for " + role);
-
-		} catch (Exception e) {
-			log("❌ Failed to start Mobile session for " + role + ": " + e.getMessage());
-			throw new RuntimeException(e);
-		}
-	}
 
 	public Map<String, WebDriver> getDriverPool() {
 		return this.driverPool;
