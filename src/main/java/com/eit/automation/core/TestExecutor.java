@@ -1355,8 +1355,11 @@ public class TestExecutor {
 			// Pick the icon based on whether the active driver is Mobile (Appium) or Web
 			String icon = (this.driver instanceof io.appium.java_client.AppiumDriver) ? "📱 " : "💻 ";
 
-			// Create the specific label: e.g., "📱 USER: " or "📱 DRIVER: "
-			String platformLabel = icon + roleName + ": ";
+			// --- HIGHLIGHTING UPDATE ---
+			// Wraps the role (USER/DRIVER/WEB) in a bright Cyan badge to make it stand out
+			String highlightedRole = "<span style='background:#00d4ff; color:#000; padding:2px 8px; border-radius:4px; font-weight:900; margin-right:5px; box-shadow: 0 0 5px rgba(0,212,255,0.5);'>" + roleName + "</span>";
+
+			String platformLabel = icon + highlightedRole + ": ";
 
 			String rawDetail = (step.getValue() != null && !step.getValue().isEmpty()) ? step.getValue() :
 					(step.getXpath() != null ? step.getXpath() : "");
