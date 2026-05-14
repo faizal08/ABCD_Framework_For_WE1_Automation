@@ -1341,14 +1341,28 @@ public class TestExecutor {
 
 			String action = step.getAction().toUpperCase();
 
-			// Detect current platform to add a visual indicator to the overlay
-			String platformIcon = (driver instanceof io.appium.java_client.AppiumDriver) ? "📱 MOBILE: " : "💻 WEB: ";
+			// --- DYNAMIC ROLE DETECTION ---
+			String roleName = "UNKNOWN";
+
+			// Loop through the pool to find which role name matches the current active driver
+			for (java.util.Map.Entry<String, WebDriver> entry : driverPool.entrySet()) {
+				if (entry.getValue().equals(this.driver)) {
+					roleName = entry.getKey().toUpperCase();
+					break;
+				}
+			}
+
+			// Pick the icon based on whether the active driver is Mobile (Appium) or Web
+			String icon = (this.driver instanceof io.appium.java_client.AppiumDriver) ? "📱 " : "💻 ";
+
+			// Create the specific label: e.g., "📱 USER: " or "📱 DRIVER: "
+			String platformLabel = icon + roleName + ": ";
 
 			String rawDetail = (step.getValue() != null && !step.getValue().isEmpty()) ? step.getValue() :
 					(step.getXpath() != null ? step.getXpath() : "");
 
-			// Combine the platform icon with the detail
-			String detail = platformIcon + rawDetail;
+			// Combine the role label with the step details
+			String detail = platformLabel + rawDetail;
 
 			String script =
 					"var overlay = document.getElementById('automation-overlay');" +
