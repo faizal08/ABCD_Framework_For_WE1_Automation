@@ -355,6 +355,17 @@ To run your tests against a specific environment, open your terminal in the proj
 > **💡 Note:** The `-Denv` parameter tells the framework exactly which `.properties` file to load before starting the browser. Make sure your environment file (e.g., `erp.properties`) is located in the root folder of your project.
 ---
 
+## ⚠️ CRITICAL: MONITOR SCREEN ALIGNMENT SETUP
+> **🚨 MUST-READ BEFORE RUNNING HYBRID TESTS**
+>
+> The ABCD Framework uses an **Adaptive Initial Resizer Engine** for split-screen parallel execution.
+> * When a hybrid test is detected, the **Web Browser automatically launches and locks itself to the LEFT side of the monitor** (Coordinates: `X=0, Width=960, Height=1080`).
+> * **Action Required:** Before launching your tests, you **MUST manually move and align all Android Emulators (User, Driver, Store) to the RIGHT side of your monitor screen (Starting from X=960 onwards).**
+>
+> *Failure to arrange emulators to the right will cause the Chrome browser window to overlap your active mobile devices during the automation layout phase, blocking real-time visual tracking.*
+
+---
+
 ## 💡 Best Practices
 * **Relative Paths:** Use `src/main/resources/test-data/image.jpg` for uploads. Never use `C:\Users\...`.
 * **Excel Locking:** **Always close your Excel file** before running a test to avoid file access errors.

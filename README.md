@@ -94,6 +94,17 @@ The framework uses system properties to point to specific configuration files:
 
 ---
 
+## ⚠️ CRITICAL: MONITOR SCREEN ALIGNMENT SETUP
+> **🚨 MUST-READ BEFORE RUNNING HYBRID TESTS**
+>
+> The ABCD Framework uses an **Adaptive Initial Resizer Engine** for split-screen parallel execution.
+> * When a hybrid test is detected, the **Web Browser automatically launches and locks itself to the LEFT side of the monitor** (Coordinates: `X=0, Width=960, Height=1080`).
+> * **Action Required:** Before launching your tests, you **MUST manually move and align all Android Emulators (User, Driver, Store) to the RIGHT side of your monitor screen (Starting from X=960 onwards).**
+>
+> *Failure to arrange emulators to the right will cause the Chrome browser window to overlap your active mobile devices during the automation layout phase, blocking real-time visual tracking.*
+
+---
+
 ## 📊 Live Dashboard Preview
 The framework injects a high-visibility overlay into your browser during execution. It dynamically detects the active role:
 * **💻 WEB:** Active when interacting with the Admin Portal.
