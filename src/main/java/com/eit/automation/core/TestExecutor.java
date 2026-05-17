@@ -592,7 +592,7 @@ public class TestExecutor {
 				// --- PRESERVED: Security Masking for Logging ---
 				if (xpath != null && (xpath.toLowerCase().contains("password") || xpath.toLowerCase().contains("pwd")
 						|| xpath.toLowerCase().contains("pass"))) {
-					log("  → Value: ********** (hidden)");
+					log("  → Value: **** (hidden)");
 				} else {
 					log("  → Value: "
 							+ (value != null && value.length() > 60 ? value.substring(0, 60) + "..." : value));
@@ -600,10 +600,18 @@ public class TestExecutor {
 
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
 					// MOBILE LOGIC
-					// We find the element using the locator (ID or XPath) and enter text
 					WebElement mobileElement = wait.until(ExpectedConditions.visibilityOfElementLocated(
 							(xpath.startsWith("//") || xpath.startsWith("(//")) ? By.xpath(xpath) : By.id(xpath)
 					));
+
+					// 👇 CLICK FIRST TO FOCUS THE CURSOR INSIDE THE BOX
+					log("  → Clicking element to focus cursor...");
+					mobileElement.click();
+
+					// Small stabilization wait for the app to register the focus
+					try { Thread.sleep(500); } catch (InterruptedException e) {}
+
+					// Clear any placeholder text if necessary, then send keys
 					mobileElement.sendKeys(value);
 
 					// Essential for Mobile: Hide keyboard to keep the screen clear for the next step
