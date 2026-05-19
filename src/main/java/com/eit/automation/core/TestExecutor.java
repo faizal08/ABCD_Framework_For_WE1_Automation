@@ -186,12 +186,17 @@ public class TestExecutor {
 			options.setAppPackage(config.getProperty(role + ".app.package"));
 			options.setAppActivity(config.getProperty(role + ".app.activity"));
 
-			// 🚀 SPEED OPTIMIZATION 1: Wipes dirty app cache storage for a clean session flow
+			// 🚀 TARGETED RESET SYSTEM: Wipes app data cache completely on the initial execution boot
 			options.setNoReset(false);
-
-			// 🚀 SPEED OPTIMIZATION 2: Re-balanced optimization capabilities to prevent crash conflicts
 			options.setCapability("fullReset", false);
-			options.setCapability("shouldTerminateApp", true);
+
+			// 🚀 MULTI-SESSION FIX: Stops Appium from killing background instances during cross-device switching
+			options.setCapability("shouldTerminateApp", false);
+			options.setCapability("dontStopAppOnReset", true); // ← Forces Appium to keep the idle app running in its emulator viewport
+
+			// 🚀 IDLE TIMEOUT FIX: Prevents Appium from silently killing this background session
+			// while you are interacting with Web or Driver sessions (Increases limit from 60s to 10 minutes)
+			options.setNewCommandTimeout(Duration.ofMinutes(10));
 
 			// CRITICAL FIX: Set to false while noReset is false so UIAutomator2 can properly hook the app process
 			options.setCapability("skipDeviceInitialization", false);
@@ -222,7 +227,7 @@ public class TestExecutor {
 				this.currentSessionRole = role;
 			}
 
-			log("✅ Mobile session started for " + role);
+			log("✅ Mobile session started and stabilized for role: [" + role + "] on device: " + config.getProperty(role + ".device.id"));
 
 		} catch (Exception e) {
 			log("❌ Failed to start Mobile session for " + role + ": " + e.getMessage());
