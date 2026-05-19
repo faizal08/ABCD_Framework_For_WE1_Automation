@@ -198,6 +198,12 @@ public class TestExecutor {
 			// while you are interacting with Web or Driver sessions (Increases limit from 60s to 10 minutes)
 			options.setNewCommandTimeout(Duration.ofMinutes(10));
 
+			// Dismisses any system dialogs (like "Android Setup isn't responding") automatically
+			options.setCapability("autoDismissAlerts", true);
+
+// Speeds up system interactions by disabling heavy window animations on startup
+			options.setCapability("disableWindowAnimation", true);
+
 			// CRITICAL FIX: Set to false while noReset is false so UIAutomator2 can properly hook the app process
 			options.setCapability("skipDeviceInitialization", false);
 			options.setCapability("skipServerInstallation", false);
@@ -772,20 +778,50 @@ public class TestExecutor {
 			case "uploadfile":
 			case "selectfile":
 			case "attachfile":
-				log("  → File: " + value);
+				log("  → Local PC File Path: " + value);
 				log("  → XPath/Locator: " + xpath);
 
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
-					// MOBILE GUARD
-					log("  ⚠ Mobile Upload: Ensure the app's permission dialogs are handled.");
-					// On mobile, we usually just use a standard click/tap on the 'Upload' button
-					// then manually automate the Gallery steps.
+					log("📱 Initiating Mobile Native Upload Flow...");
+
+					// 🚀 UNIVERSAL FIX: Extract the actual filename dynamically from your Excel value
+					java.io.File localFile = new java.io.File(value);
+					String fileName = localFile.getName(); // Extracts "license.JPG", "vehicle.jpg", etc.
+
+					// Combine it to create a dynamic target path on the Android Emulator
+					String remotePath = "/sdcard/Download/" + fileName;
+					log("  → Dynamic Emulator Target Path: " + remotePath);
+
+					// 1. Push the exact file from your Excel sheet to the device
+					mobileActions.pushFileToDevice(value, remotePath);
+
+					// 2. Tap the main "Upload Documents" button in your app
 					mobileActions.tap(xpath);
+
+					// 3. Handle the Bottom Sheet: Tap the "GALLERY" button
+					String galleryButtonXpath = "//*[@content-desc='GALLERY'] | //*[contains(@text,'GALLERY')]";
+					mobileActions.tap(galleryButtonXpath);
+
+					// 4. Handle System Permission if it pops up
+					try {
+						String permissionBtn = "//android.widget.Button[@resource-id='com.android.permissioncontroller:id/permission_allow_button']";
+						mobileActions.tap(permissionBtn);
+					} catch (Exception e) {
+						log("ℹ️ Permission dialog did not appear, proceeding...");
+					}
+
+					// 5. Navigate the native Android System Picker to select your image
+					log("⏳ Selecting the pushed image from system downloads...");
+
+					// Selects the first item in the recent files list (which will be your freshly pushed file)
+					String firstPhotoInGrid = "//android.widget.ImageView[1] | //android.view.ViewGroup[contains(@content-desc,'Photo taken')][1]";
+					mobileActions.tap(firstPhotoInGrid);
+
 				} else {
 					// WEB LOGIC: Original FileActions
 					fileActions.uploadFile(value, xpath);
 				}
-				log("  ✓ File upload action initiated");
+				log("  ✓ File upload action completed");
 				break;
 
 			case "robotupload":

@@ -90,6 +90,32 @@ public class MobileActions {
         }
     }
 
+    public void pushFileToDevice(String localPath, String devicePath) {
+        try {
+            java.io.File file = new java.io.File(localPath);
+
+            // 🚀 CRITICAL SANITIZATION: Force forward slashes for Android's file system
+            String sanitizedDevicePath = devicePath.replace("\\", "/");
+
+            // 1. Ensure driver is cast cleanly and push the file to the device
+            ((io.appium.java_client.android.AndroidDriver) this.driver).pushFile(sanitizedDevicePath, file);
+            System.out.println("✅ [MobileActions] Successfully pushed test image to mobile device: " + sanitizedDevicePath);
+
+            // 🚀 OFFICIAL GALLERY FIX: Uses the driver's native 'mobile: broadcast' method
+            // This triggers the intent cleanly to tell Android to parse and show the file in the Gallery.
+            java.util.Map<String, Object> intentArgs = new java.util.HashMap<>();
+            intentArgs.put("action", "android.intent.action.MEDIA_SCANNER_SCAN_FILE");
+            intentArgs.put("data", "file://" + sanitizedDevicePath);
+
+            ((io.appium.java_client.android.AndroidDriver) this.driver).executeScript("mobile: broadcast", intentArgs);
+            System.out.println("🔄 [MobileActions] Native Media Scanner broadcast triggered successfully via 'mobile: broadcast'.");
+
+        } catch (Exception e) {
+            System.err.println("❌ [MobileActions] Failed to push file to device: " + e.getMessage());
+            // Crucial for automation: rethrow the exception so the TestExecutor knows the setup step failed
+            throw new RuntimeException(e);
+        }
+    }
     /**
      * Helper to distinguish between XPath and Mobile Accessibility IDs
      */
