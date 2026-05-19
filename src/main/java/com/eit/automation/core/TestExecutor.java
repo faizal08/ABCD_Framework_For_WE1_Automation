@@ -213,8 +213,7 @@ public class TestExecutor {
 			// Dismisses any system dialogs (like "Android Setup isn't responding") automatically
 			options.setCapability("autoDismissAlerts", true);
 
-			// Speeds up system interactions by disabling heavy window animations on startup
-			options.setCapability("disableWindowAnimation", true);
+
 
 			// CRITICAL FIX: Set to false while noReset is false so UIAutomator2 can properly hook the app process
 			options.setCapability("skipDeviceInitialization", false);
