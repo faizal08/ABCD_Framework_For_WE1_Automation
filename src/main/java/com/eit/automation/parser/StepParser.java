@@ -112,6 +112,9 @@ public class StepParser {
 		// ========================================
 		// 7. EXPLICIT WAITS
 		// ========================================
+		// --- NEW STRUCTURAL CHECKPOINT PATTERNS ---
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(wait_until_visible|wait_visible)\\b.*", "wait_until_visible"));
+		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+until\\s+visible\\b.*", "wait_until_visible"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+(for|until)\\s+visible\\b.*", "waitforvisible"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+(for|until)\\s+clickable\\b.*", "waitforclickable"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+(for|until)\\s+(present|element)\\b.*", "waitforpresent"));

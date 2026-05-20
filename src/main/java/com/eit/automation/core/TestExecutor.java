@@ -1171,6 +1171,24 @@ public class TestExecutor {
 				log("  ✓ Element is clickable");
 				break;
 
+			case "wait_until_visible":
+			case "wait_visible":
+				log("⏳ Initiating Explicit Structural Checkpoint for Locator: " + xpath);
+				try {
+					// Create a dynamic wait bounding handle (Max 30 seconds)
+					WebDriverWait structuralCheck = new WebDriverWait(driver, Duration.ofSeconds(60));
+
+					// Hold execution flow until the next page structural container is fully rendered
+					structuralCheck.until(ExpectedConditions.visibilityOfElementLocated(
+							(xpath.startsWith("//") || xpath.startsWith("(//")) ? By.xpath(xpath) : By.id(xpath)
+					));
+					log("✅ Structure fully rendered! Proceeding to next automated action path.");
+				} catch (Exception e) {
+					log("❌ Structural Checkpoint Failed! Next page container did not load within 60 seconds.");
+					throw new RuntimeException("Page load timeout on locator: " + xpath, e);
+				}
+				break;
+
 			case "sql_cleanup":
 				try {
 					// --- NEW UPDATE: Show 'Trash Bin' screen if in cleanup mode ---
