@@ -1254,25 +1254,30 @@ public class TestExecutor {
 				break;
 
 			case "tap_coordinate":
-				// Expects value format from Excel: "989:2045"
+				// Expects value format from Excel: "978:2224"
+				if (value == null || !value.contains(":")) {
+					log("  ❌ Error: Invalid coordinate format in Excel. Expected 'X:Y' (e.g., 978:2224)");
+					throw new IllegalArgumentException("Invalid coordinate format: " + value);
+				}
+
 				String[] coordinates = value.split(":");
-				int absoluteX = Integer.parseInt(coordinates[0]);
-				int absoluteY = Integer.parseInt(coordinates[1]);
+				int absoluteX = Integer.parseInt(coordinates[0].trim());
+				int absoluteY = Integer.parseInt(coordinates[1].trim());
 
 				log("  → Tapping Absolute Screen Coordinates: (" + absoluteX + ", " + absoluteY + ")");
 
-				// Tap absolute coordinates from the top-left corner of the whole screen
-				new Actions(driver)
-						.moveByOffset(absoluteX, absoluteY)
-						.click()
-						.perform();
+				try {
+					// Correct, compliant absolute coordinate tap
+					new Actions(driver)
+							.moveToLocation(absoluteX, absoluteY) // Targets exact physical pixels from top-left (0,0)
+							.click()
+							.perform();
 
-				// Crucial: Reset the pointer back to (0,0) so the next test step doesn't inherit this offset
-				new Actions(driver)
-						.moveByOffset(-absoluteX, -absoluteY)
-						.perform();
-
-				log("  ✓ Tapped Absolute Coordinates");
+					log("  ✓ Tapped Absolute Coordinates Successfully");
+				} catch (Exception e) {
+					log("  ❌ Failed to execute coordinate tap: " + e.getMessage());
+					throw e;
+				}
 				break;
 
 			default:
