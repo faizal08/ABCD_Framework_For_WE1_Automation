@@ -1231,31 +1231,32 @@ public class TestExecutor {
 			case "tap":
 				log("  → Tapping Mobile Element: " + xpath);
 
-				// 1. Locate the element safely
+				// 1. Locate the element safely using your standard explicit wait
 				WebElement element = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
 
 				// 2. Capture the layout hierarchy signature before tapping
 				String originalPageSource = driver.getPageSource();
 				boolean pageMoved = false;
 				int clickAttempts = 0;
+				int maxAttempts = 4; // 🔄 UPDATED: Increased from 3 to 4 attempts for a wider recovery window
 
-				// 3. Keep trying to click if high system lag swallows the first attempt
-				while (!pageMoved && clickAttempts < 3) {
+				// 3. Loop handles app-side rendering delays or missed clicks
+				while (!pageMoved && clickAttempts < maxAttempts) {
 					clickAttempts++;
 					try {
 						log("  → Injected Tap Attempt #" + clickAttempts);
 						element.click();
 
-						// Give the app a 1.5-second buffer to handle the page transition under heavy load
-						Thread.sleep(1500);
+						// ⏳ UPDATED: Increased sleep from 1500ms to 3500ms to allow slow background transitions to process
+						Thread.sleep(3500);
 
-						// 4. Check if the screen layout changed. If it did, the app accepted the click!
+						// 4. Verify if the screen changed. If it did, the click successfully registered!
 						String currentPageSource = driver.getPageSource();
 						if (!originalPageSource.equals(currentPageSource)) {
 							pageMoved = true;
 							log("  ✓ App responded! Page transition detected.");
 						} else {
-							log("  ⚠️ System Lag Alert: Button clicked, but app layout did not change. Retrying...");
+							log("  ⚠️ System Lag Alert: Button clicked, but app layout did not change yet. Retrying...");
 						}
 					} catch (Exception clickEx) {
 						// Fallback to absolute W3C coordinate tap if standard clicking throws a stale/interrupted error
@@ -1273,7 +1274,9 @@ public class TestExecutor {
 									.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
 
 							((io.appium.java_client.AppiumDriver) driver).perform(Collections.singletonList(tapSequence));
-							Thread.sleep(1500);
+
+							// ⏳ UPDATED: Give the fallback touch sequence the same 3.5s breathing room
+							Thread.sleep(3500);
 
 							if (!originalPageSource.equals(driver.getPageSource())) {
 								pageMoved = true;
