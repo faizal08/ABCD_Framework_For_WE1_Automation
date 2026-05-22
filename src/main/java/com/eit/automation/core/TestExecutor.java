@@ -1227,6 +1227,54 @@ public class TestExecutor {
 				log("  ✓ Tapped");
 				break;
 
+			case "tap_offset":
+				log("  → Tapping Mobile Element with Offset: " + xpath);
+
+				// 1. Split your "90:50" string using the colon separator
+				String[] offsets = value.split(":");
+				double percentX = Double.parseDouble(offsets[0]) / 100.0; // 90% -> 0.90
+				double percentY = Double.parseDouble(offsets[1]) / 100.0; // 50% -> 0.50
+
+				// 2. Find the element using your framework's 'xpath' variable
+				WebElement element = driver.findElement(By.xpath(xpath));
+				int elWidth = element.getSize().getWidth();
+				int elHeight = element.getSize().getHeight();
+
+				// 3. Calculate exactly where to tap inside the element box
+				int targetX = (int) (elWidth * percentX);
+				int targetY = (int) (elHeight * percentY);
+
+				// 4. Execute the click action
+				new Actions(driver)
+						.moveToElement(element, targetX, targetY)
+						.click()
+						.perform();
+
+				log("  ✓ Tapped with Offset");
+				break;
+
+			case "tap_coordinate":
+				// Expects value format from Excel: "989:2045"
+				String[] coordinates = value.split(":");
+				int absoluteX = Integer.parseInt(coordinates[0]);
+				int absoluteY = Integer.parseInt(coordinates[1]);
+
+				log("  → Tapping Absolute Screen Coordinates: (" + absoluteX + ", " + absoluteY + ")");
+
+				// Tap absolute coordinates from the top-left corner of the whole screen
+				new Actions(driver)
+						.moveByOffset(absoluteX, absoluteY)
+						.click()
+						.perform();
+
+				// Crucial: Reset the pointer back to (0,0) so the next test step doesn't inherit this offset
+				new Actions(driver)
+						.moveByOffset(-absoluteX, -absoluteY)
+						.perform();
+
+				log("  ✓ Tapped Absolute Coordinates");
+				break;
+
 			default:
 				throw new RuntimeException("Unknown action: " + action);
 		}
