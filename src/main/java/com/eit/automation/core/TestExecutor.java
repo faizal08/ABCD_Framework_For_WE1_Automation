@@ -819,28 +819,30 @@ public class TestExecutor {
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
 					log("📱 Initiating Mobile Native Upload Flow...");
 
-					// 🚀 UNIVERSAL FIX: Extract the actual filename dynamically from your Excel value
 					java.io.File localFile = new java.io.File(value);
-					String fileName = localFile.getName(); // Extracts "license.JPG", "vehicle.jpg", etc.
+					String fileName = localFile.getName();
 
-					// Combine it to create a dynamic target path on the Android Emulator
 					String remotePath = "/sdcard/Download/" + fileName;
 					log("  → Dynamic Emulator Target Path: " + remotePath);
 
 					// 1. Push the exact file from your Excel sheet to the device
 					mobileActions.pushFileToDevice(value, remotePath);
 
-					// 2. Tap the main "Upload Documents" button in your app
-					mobileActions.tap(xpath);
+					// 2. Open the main upload trigger dialog using standard wait
+					WebElement uploadBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
+					uploadBtn.click();
+					Thread.sleep(2000); // Short stabilization wait instead of heavy 3.5s page source loop
 
-					// 3. Handle the Bottom Sheet: Tap the "GALLERY" button
+					// 3. Handle the Bottom Sheet: Direct raw click on GALLERY
 					String galleryButtonXpath = "//*[@content-desc='GALLERY'] | //*[contains(@text,'GALLERY')]";
-					mobileActions.tap(galleryButtonXpath);
+					WebElement galleryBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(galleryButtonXpath)));
+					galleryBtn.click();
+					Thread.sleep(3000); // Allow Android System File Picker UI to cleanly establish foreground window
 
 					// 4. Handle System Permission if it pops up
 					try {
 						String permissionBtn = "//android.widget.Button[@resource-id='com.android.permissioncontroller:id/permission_allow_button']";
-						mobileActions.tap(permissionBtn);
+						driver.findElement(By.xpath(permissionBtn)).click();
 					} catch (Exception e) {
 						log("ℹ️ Permission dialog did not appear, proceeding...");
 					}
@@ -848,9 +850,11 @@ public class TestExecutor {
 					// 5. Navigate the native Android System Picker to select your image
 					log("⏳ Selecting the pushed image from system downloads...");
 
-					// Selects the first item in the recent files list (which will be your freshly pushed file)
+					// Target the element natively to prevent triggering the 4-attempt self-healing retry logic here
 					String firstPhotoInGrid = "//android.widget.ImageView[1] | //android.view.ViewGroup[contains(@content-desc,'Photo taken')][1]";
-					mobileActions.tap(firstPhotoInGrid);
+					WebElement nativePhoto = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(firstPhotoInGrid)));
+					nativePhoto.click();
+					log("  ✓ Native touch coordinate dispatched to target photo asset.");
 
 				} else {
 					// WEB LOGIC: Original FileActions
