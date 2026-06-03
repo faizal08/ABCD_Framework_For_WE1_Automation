@@ -491,6 +491,35 @@ public class TestExecutor {
 	/**
 	 * Execute single test step - NEVER THROWS, JUST LOGS ERRORS
 	 */
+	/**
+	 * Dynamically resolves the locator strategy based on the Excel target string.
+	 * Bypasses XML parsing overhead by leveraging native matching engines.
+	 */
+	public org.openqa.selenium.By getDynamicLocator(String targetFromExcel) {
+		if (targetFromExcel == null || targetFromExcel.trim().isEmpty()) {
+			return null;
+		}
+
+		String cleanTarget = targetFromExcel.trim();
+
+		// 1. Native Resource ID strategy
+		if (cleanTarget.startsWith("id=")) {
+			return org.openqa.selenium.By.id(cleanTarget.replace("id=", "").trim());
+		}
+		// 2. Appium Accessibility ID strategy (content-desc)
+		else if (cleanTarget.startsWith("accessibility=")) {
+			return io.appium.java_client.AppiumBy.accessibilityId(cleanTarget.replace("accessibility=", "").trim());
+		}
+		// 3. Native Android UIAutomator engine strategy (For text matches, indexing, states)
+		else if (cleanTarget.startsWith("automator=")) {
+			return io.appium.java_client.AppiumBy.androidUIAutomator(cleanTarget.replace("automator=", "").trim());
+		}
+		// 4. Default Fallback to standard XPath
+		else {
+			return org.openqa.selenium.By.xpath(cleanTarget);
+		}
+	}
+
 	private void executeStep(TestStep step) throws Exception {
 		String action = step.getAction().toLowerCase();
 		String value = step.getValue();
@@ -499,11 +528,11 @@ public class TestExecutor {
 
 		log("  ⚙ Action: " + action.toUpperCase());
 
-		/*// HOTFIX: Override file upload path with user provided path
-		if ((action.equals("uploadfile") || action.equals("robotupload")) && value != null) {
-			log("  ⚠ HOTFIX: Overriding file path with 'C:\\Vehicle Image\\Auto.jpg'");
-			value = "C:\\Vehicle Image\\Auto.jpg";
-		}*/
+    /*// HOTFIX: Override file upload path with user provided path
+    if ((action.equals("uploadfile") || action.equals("robotupload")) && value != null) {
+       log("  ⚠ HOTFIX: Overriding file path with 'C:\\Vehicle Image\\Auto.jpg'");
+       value = "C:\\Vehicle Image\\Auto.jpg";
+    }*/
 
 		// 1. PAGEFACTORY LOOKUP (If XPath is empty, try to match value/context to a
 		// Page Object field)
@@ -538,10 +567,9 @@ public class TestExecutor {
 					log("  → Auto-generated Web XPath: " + xpath);
 				}
 				else if (driver instanceof io.appium.java_client.AppiumDriver) {
-					// For mobile, we often use the 'Value' directly as an Accessibility ID or ID
-					// We will handle the specific finding logic inside MobileActions/ClickActions
+					// For mobile, preserve the raw prefixed target string (accessibility=, id=, automator=)
 					xpath = value;
-					log("  → Using Mobile Locator: " + xpath);
+					log("  → Using Prefixed Mobile Engine Selector: " + xpath);
 				}
 				else {
 					log("  → Using auto-detection for toast/alert");
@@ -564,9 +592,7 @@ public class TestExecutor {
 					log("  ✓ Page loaded: " + driver.getCurrentUrl());
 				}
 				break;
-			// ... (Removing migrated cases to clean up? Or keeping as fallback?
-			// For safety, I'll keep the switch case logic for now, but the Registry check
-			// above protects us.)
+
 			case "scrolltobottom":
 				log("  → Scrolling to bottom");
 				scrollActions.scrollToBottom();
@@ -580,8 +606,10 @@ public class TestExecutor {
 				break;
 
 			case "scrolltoelement":
-				log("  → XPath: " + xpath);
-				WebElement elementToScroll = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+				log("  → Locator Target: " + xpath);
+				// UPDATED: Uses dynamic locator strategy instead of a hardcoded By.xpath
+				org.openqa.selenium.By scrollLocator = getDynamicLocator(xpath);
+				WebElement elementToScroll = wait.until(ExpectedConditions.presenceOfElementLocated(scrollLocator));
 				scrollActions.scrollToElement(elementToScroll);
 				log("  ✓ Scrolled to element");
 				break;
@@ -604,20 +632,18 @@ public class TestExecutor {
 
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
 					// MOBILE LOGIC: Use the MobileActions tap method
-					// This uses the parseLocator logic (ID or XPath) we added to MobileActions
 					mobileActions.tap(xpath);
 				} else {
 					// WEB LOGIC: Preserve your original ClickActions logic
-					// If we have a direct XPath, we tell the action handler NOT to use 'Value'
 					if (xpath != null && !xpath.isEmpty()) {
 						clickActions.clickElementWithRetry(xpath, null);
 					} else {
 						clickActions.clickElementWithRetry(xpath, value);
 					}
 				}
-
 				log("  ✓ Clicked");
 				break;
+
 			case "select":
 				log("  → XPath/Locator: " + xpath);
 				log("  → Value to Select: " + value);
@@ -626,18 +652,18 @@ public class TestExecutor {
 					// MOBILE LOGIC
 					// 1. First, tap the element to open the selection list/picker
 					mobileActions.tap(xpath);
-					log("  → Opened mobile picker, searching for: " + value);
+					log("  → Opened mobile picker, searching for option text: " + value);
 
-					// 2. Locate the specific text option.
-					// We use a dynamic XPath to find the text on the screen.
-					String itemLocator = "//*[@text='" + value + "' or @content-desc='" + value + "']";
-					WebElement item = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(itemLocator)));
+					// 2. Locate the specific text option natively using UIAutomator for maximum speed
+					org.openqa.selenium.By mobileItemSelector = io.appium.java_client.AppiumBy.androidUIAutomator(
+							"new UiSelector().text(\"" + value + "\").description(\"" + value + "\")"
+					);
+					WebElement item = wait.until(ExpectedConditions.elementToBeClickable(mobileItemSelector));
 					item.click();
 				} else {
 					// WEB LOGIC: Preserve your original ClickActions logic
 					clickActions.selectElementWithRetry(xpath, value);
 				}
-
 				log("  ✓ Selected");
 				break;
 
@@ -660,18 +686,17 @@ public class TestExecutor {
 
 					while (attempts < 2) {
 						try {
-							mobileElement = wait.until(ExpectedConditions.presenceOfElementLocated(
-									(xpath.startsWith("//") || xpath.startsWith("(//")) ? By.xpath(xpath) : By.id(xpath)
-							));
+							// ⚡ UPDATED LOOKUP: Resolves prefix engine strategies natively
+							org.openqa.selenium.By activeMobileLocator = getDynamicLocator(xpath);
+							mobileElement = wait.until(ExpectedConditions.presenceOfElementLocated(activeMobileLocator));
 
 							String lowerXpath = xpath != null ? xpath.toLowerCase() : "";
 
-							// ⚡ PERFORMANCE BOOST: Clean string comparison (Removes findElements layout scanning lag)
-							boolean isOtpFieldXpath = lowerXpath.contains("verify") || lowerXpath.contains("otp");
+							// ⚡ PERFORMANCE BOOST: Clean matching recognizing the new native selectors
+							boolean isOtpFieldXpath = lowerXpath.contains("verify") || lowerXpath.contains("otp") || lowerXpath.contains("instance") || lowerXpath.contains("automator");
 							boolean isInputTarget = lowerXpath.contains("edittext") || lowerXpath.contains("descendant") || lowerXpath.contains("widget.view");
 
 							// 🌍 SAFE LENGTH LIMITS: Targets strictly 4 or 6-digit verification codes.
-							// This protects 10-digit mobile numbers or name strings from running slow.
 							boolean isNumericOtpValue = value != null && value.matches("\\d+") && (value.length() == 4 || value.length() == 6);
 
 							if ((isOtpFieldXpath || isInputTarget) && isNumericOtpValue) {
@@ -759,33 +784,41 @@ public class TestExecutor {
 				break;
 
 			case "clear":
-				log("  → XPath: " + xpath);
-				inputActions.clearField(xpath);
+				log("  → XPath/Locator: " + xpath);
+				if (driver instanceof io.appium.java_client.AppiumDriver) {
+					org.openqa.selenium.By activeMobileLocator = getDynamicLocator(xpath);
+					wait.until(ExpectedConditions.presenceOfElementLocated(activeMobileLocator)).clear();
+				} else {
+					inputActions.clearField(xpath);
+				}
 				log("  ✓ Field cleared");
 				break;
 
 			case "arrow_down":
-				log("  → XPath: " + xpath);
-				driver.findElement(By.xpath(xpath)).sendKeys(org.openqa.selenium.Keys.ARROW_DOWN);
+				log("  → Locator Target: " + xpath);
+				// UPDATED: Dynamic lookup support for modern selectors
+				driver.findElement(getDynamicLocator(xpath)).sendKeys(org.openqa.selenium.Keys.ARROW_DOWN);
 				log("  ✓ Sent Key: ARROW_DOWN");
 				break;
 
 			case "arrow_up":
-				log("  → XPath: " + xpath);
-				driver.findElement(By.xpath(xpath)).sendKeys(org.openqa.selenium.Keys.ARROW_UP);
+				log("  → Locator Target: " + xpath);
+				// UPDATED: Dynamic lookup support for modern selectors
+				driver.findElement(getDynamicLocator(xpath)).sendKeys(org.openqa.selenium.Keys.ARROW_UP);
 				log("  ✓ Sent Key: ARROW_UP");
 				break;
 
 			case "press_enter":
-				log("  → XPath: " + xpath);
-				driver.findElement(By.xpath(xpath)).sendKeys(org.openqa.selenium.Keys.ENTER);
+				log("  → Locator Target: " + xpath);
+				// UPDATED: Dynamic lookup support for modern selectors
+				driver.findElement(getDynamicLocator(xpath)).sendKeys(org.openqa.selenium.Keys.ENTER);
 				log("  ✓ Sent Key: ENTER");
 				break;
 
 			case "tab":
-				log("  → Starting XPath: " + xpath);
-				// 1. Find the starting point
-				WebElement currentElement = driver.findElement(By.xpath(xpath));
+				log("  → Starting Locator Target: " + xpath);
+				// 1. Find the starting point dynamically
+				WebElement currentElement = driver.findElement(getDynamicLocator(xpath));
 
 				int repeat = 1;
 				try {
@@ -829,7 +862,9 @@ public class TestExecutor {
 					mobileActions.pushFileToDevice(value, remotePath);
 
 					// 2. Open the main upload trigger dialog using standard wait
-					WebElement uploadBtn = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
+					// UPDATED: Dynamic lookup support for modern selectors
+					org.openqa.selenium.By activeUploadLocator = getDynamicLocator(xpath);
+					WebElement uploadBtn = wait.until(ExpectedConditions.elementToBeClickable(activeUploadLocator));
 					uploadBtn.click();
 					Thread.sleep(2000); // Short stabilization wait instead of heavy 3.5s page source loop
 
@@ -872,7 +907,8 @@ public class TestExecutor {
 				log("  → File: " + value);
 				if (xpath != null && !xpath.isEmpty()) {
 					log("  → Clicking upload button: " + xpath);
-					driver.findElement(By.xpath(xpath)).click();
+					// UPDATED: Dynamic lookup support for modern selectors
+					driver.findElement(getDynamicLocator(xpath)).click();
 					waitActions.waitFor(1000);
 				}
 				fileActions.uploadFileWithRobot(value);
@@ -885,7 +921,9 @@ public class TestExecutor {
 
 				if (driver instanceof io.appium.java_client.AppiumDriver) {
 					// Mobile usually waits for a specific element like 'Upload Successful'
-					waitActions.waitForElementVisible(xpath);
+					// UPDATED: Leverages your framework's visible wait via dynamic strategy mapping
+					org.openqa.selenium.By targetUploadLocator = getDynamicLocator(xpath);
+					wait.until(ExpectedConditions.visibilityOfElementLocated(targetUploadLocator));
 				} else {
 					// WEB LOGIC: Original FileActions
 					fileActions.waitForUploadComplete(xpath);
@@ -893,13 +931,13 @@ public class TestExecutor {
 				log("  ✓ Upload wait complete");
 				break;
 
-
 			case "element_present":
 				log("  🔍 Checking if element is present: " + xpath);
 				try {
 					// Use a short explicit wait to see if it appears
 					WebDriverWait shortWait = new WebDriverWait(driver, Duration.ofSeconds(5));
-					shortWait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+					// UPDATED: Dynamic lookup support for modern selectors
+					shortWait.until(ExpectedConditions.presenceOfElementLocated(getDynamicLocator(xpath)));
 					log("  ✅ Element found (as expected).");
 				} catch (Exception e) {
 					throw new RuntimeException("Validation Failed: Element was expected but NOT found: " + xpath);
@@ -911,7 +949,8 @@ public class TestExecutor {
 				// 1. Temporarily disable implicit wait to check immediately
 				driver.manage().timeouts().implicitlyWait(Duration.ofSeconds(0));
 				try {
-					List<WebElement> elements = driver.findElements(By.xpath(xpath));
+					// UPDATED: Dynamic lookup support for modern selectors
+					List<WebElement> elements = driver.findElements(getDynamicLocator(xpath));
 					if (elements.isEmpty()) {
 						log("  ✅ Element is absent (as expected).");
 					} else {
@@ -929,7 +968,7 @@ public class TestExecutor {
 			case "verifyerrortoast":
 				log("  → Expected: " + value);
 				if (xpath != null && !xpath.isEmpty()) {
-					log("  → XPath: " + xpath);
+					log("  → Locator/XPath: " + xpath);
 					toastActions.verifyToastMessage(value, xpath);
 				} else {
 					log("  → Auto-detecting toast");
@@ -953,13 +992,13 @@ public class TestExecutor {
 			case "verifyalert":
 			case "verifyalertmessage":
 				log("  → Expected: " + (value != null && !value.isEmpty() ? value : "(just verify presence)"));
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				toastActions.verifyToastMessage(value, xpath);
 				log("  ✓ Alert verified");
 				break;
 
 			case "waitfortoast":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				toastActions.waitForToastToAppearAndDisappear(xpath);
 				log("  ✓ Toast lifecycle complete");
 				break;
@@ -967,34 +1006,34 @@ public class TestExecutor {
 			case "verify":
 			case "verifyvisible":
 			case "verifydisplayed":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementVisible(xpath);
 				log("  ✓ Element visible");
 				break;
 
 			case "verifytext":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				log("  → Expected: " + value);
 				verificationActions.verifyElementValueOrText(xpath, value);
 				log("  ✓ Text verified");
 				break;
 
 			case "verifyvalue":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				log("  → Expected: " + value);
 				verificationActions.verifyElementValue(xpath, value);
 				log("  ✓ Value verified");
 				break;
 
 			case "drawpolygon":
-				log("  → Canvas XPath: " + xpath);
+				log("  → Canvas Locator/XPath: " + xpath);
 				log("  → Points: " + value);
 				drawPolygon(xpath, value);
 				log("  ✓ Polygon drawn");
 				break;
 
 			case "verifydate":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				if (value != null && !value.isEmpty()) {
 					log("  → Expected Date: " + value);
 					verificationActions.verifyElementDate(xpath, value);
@@ -1006,46 +1045,46 @@ public class TestExecutor {
 
 			case "verifycurrentdate":
 			case "verifytodaydate":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyDateFieldIsToday(xpath);
 				log("  ✓ Date is today");
 				break;
 
 			case "verifyenabled":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementEnabled(xpath);
 				log("  ✓ Element enabled");
 				break;
 
 			case "verifydisabled":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementDisabled(xpath);
 				log("  ✓ Element disabled");
 				break;
 
 			case "verifyselected":
 			case "verifychecked":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementSelected(xpath);
 				log("  ✓ Element selected");
 				break;
 
 			case "verifyexists":
 			case "verifypresent":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementExists(xpath);
 				log("  ✓ Element exists");
 				break;
 
 			case "verifyhidden":
 			case "verifynotvisible":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				verificationActions.verifyElementNotVisible(xpath);
 				log("  ✓ Element hidden");
 				break;
 
 			case "verifycontains":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				log("  → Expected to contain: " + value);
 				verificationActions.verifyElementContainsText(xpath, value);
 				log("  ✓ Text contains expected");
@@ -1053,7 +1092,7 @@ public class TestExecutor {
 
 			case "verifycount":
 				int count = Integer.parseInt(value);
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				log("  → Expected count: " + count);
 				verificationActions.verifyElementCount(xpath, count);
 				log("  ✓ Count verified");
@@ -1061,7 +1100,7 @@ public class TestExecutor {
 
 			case "verifyattribute":
 				String[] parts = value.split("=", 2);
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				log("  → Attribute: " + parts[0] + " = " + parts[1]);
 				verificationActions.verifyElementAttribute(xpath, parts[0], parts[1]);
 				log("  ✓ Attribute verified");
@@ -1077,7 +1116,6 @@ public class TestExecutor {
 					log("  → Also verifying element visibility: " + xpath);
 					verificationActions.verifyElementVisible(xpath);
 				}
-
 				log("  ✓ Page title verified");
 				break;
 
@@ -1104,13 +1142,13 @@ public class TestExecutor {
 			case "verifymapshape":
 			case "verifypolygon":
 			case "verifymapelement":
-				log("  → Map XPath: " + xpath);
+				log("  → Map Locator/XPath: " + xpath);
 				verificationActions.verifyMapShapePresent(xpath);
 				log("  ✓ Map shape verified");
 				break;
 
 			case "verifygridvalue":
-				log("  → Grid XPath: " + xpath);
+				log("  → Grid Locator/XPath: " + xpath);
 				String[] gridParts = value.split("=", 2);
 				if (gridParts.length < 2) {
 					throw new RuntimeException(
@@ -1152,7 +1190,7 @@ public class TestExecutor {
 					log("  ✓ Waited " + value + "ms");
 				} else if (xpath != null && !xpath.isEmpty()) {
 					// Dynamic Wait for Element
-					log("  → Waiting for visibility: " + xpath);
+					log("  → Waiting for visibility of locator: " + xpath);
 
 					if (driver instanceof io.appium.java_client.AppiumDriver) {
 						// MOBILE LOGIC: Uses the Visibility check which is reliable on both platforms
@@ -1170,33 +1208,32 @@ public class TestExecutor {
 
 			case "waitforvisible":
 			case "wait for visible":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				waitActions.waitForElementVisible(xpath);
 				log("  ✓ Element is visible");
 				break;
 
 			case "waitforclickable":
 			case "wait for clickable":
-				log("  → XPath: " + xpath);
+				log("  → Locator/XPath: " + xpath);
 				waitActions.waitForElementClickable(xpath);
 				log("  ✓ Element is clickable");
 				break;
 
 			case "wait_until_visible":
 			case "wait_visible":
-				log("⏳ Initiating Explicit Structural Checkpoint for Locator: " + xpath);
+				log("⏳ Initiating Explicit Structural Checkpoint for Locator Target: " + xpath);
 				try {
-					// Create a dynamic wait bounding handle (Max 30 seconds)
+					// Create a dynamic wait bounding handle (Max 60 seconds)
 					WebDriverWait structuralCheck = new WebDriverWait(driver, Duration.ofSeconds(60));
 
-					// Hold execution flow until the next page structural container is fully rendered
-					structuralCheck.until(ExpectedConditions.visibilityOfElementLocated(
-							(xpath.startsWith("//") || xpath.startsWith("(//")) ? By.xpath(xpath) : By.id(xpath)
-					));
+					// UPDATED: Dynamically resolves your native selectors (accessibility, id, automator, xpath)
+					org.openqa.selenium.By dynamicWaitLocator = getDynamicLocator(xpath);
+					structuralCheck.until(ExpectedConditions.visibilityOfElementLocated(dynamicWaitLocator));
 					log("✅ Structure fully rendered! Proceeding to next automated action path.");
 				} catch (Exception e) {
 					log("❌ Structural Checkpoint Failed! Next page container did not load within 60 seconds.");
-					throw new RuntimeException("Page load timeout on locator: " + xpath, e);
+					throw new RuntimeException("Page load timeout on locator target: " + xpath, e);
 				}
 				break;
 
@@ -1233,10 +1270,12 @@ public class TestExecutor {
 				break;
 
 			case "tap":
-				log("  → Tapping Mobile Element: " + xpath);
+				log("  → Tapping Mobile Locator Target: " + xpath);
 
-				// 1. Locate the element safely using your standard explicit wait
-				WebElement element = wait.until(ExpectedConditions.elementToBeClickable(By.xpath(xpath)));
+				// 1. Locate the element safely using your dynamic locator strategy
+				// UPDATED: Dynamically resolves native engine strategies instead of being locked into standard By.xpath
+				org.openqa.selenium.By dynamicTapLocator = getDynamicLocator(xpath);
+				WebElement element = wait.until(ExpectedConditions.elementToBeClickable(dynamicTapLocator));
 
 				// 2. Capture the layout hierarchy signature before tapping
 				String originalPageSource = driver.getPageSource();
@@ -1300,7 +1339,6 @@ public class TestExecutor {
 				log("  ✓ Step Completed Successfully");
 				break;
 
-
 			case "tap_coordinate":
 				// Expects value format from Excel: "978:2224"
 				if (value == null || !value.contains(":")) {
@@ -1336,7 +1374,7 @@ public class TestExecutor {
 	private String generateXPathFromValue(String value, String context) {
 		// If we are on Mobile, do not use complex Web XPaths
 		if (driver instanceof io.appium.java_client.AppiumDriver) {
-			return value; // Return raw value to be used as ID/Accessibility ID
+			return value; // Return raw value to be used as ID/Accessibility ID/Prefixed Selector
 		}
 
 		if (context != null && !context.isEmpty()) {
@@ -1357,7 +1395,9 @@ public class TestExecutor {
 			return;
 		}
 
-		WebElement map = wait.until(ExpectedConditions.presenceOfElementLocated(By.xpath(xpath)));
+		// UPDATED: Dynamic lookup support for modern web selectors
+		org.openqa.selenium.By canvasLocator = getDynamicLocator(xpath);
+		WebElement map = wait.until(ExpectedConditions.presenceOfElementLocated(canvasLocator));
 
 		// This line would crash on Mobile
 		((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", map);
@@ -1396,6 +1436,7 @@ public class TestExecutor {
 
 		log("  ✓ Polygon committed. Sending TAB to update form state.");
 	}
+
 	private int[] parsePoint(String point, int maxX, int maxY) {
 		String[] xy = point.split(";");
 		if (xy.length < 2) {
@@ -1457,7 +1498,7 @@ public class TestExecutor {
 		log("┌────────────────────────────────────────────────────────────────────────────────┐");
 		log("│ STEP " + stepNumber + "/" + totalSteps + " │ " + step.getAction().toUpperCase()
 				+ " ".repeat(Math.max(1, 68 - step.getAction().length() - String.valueOf(stepNumber).length()
-						- String.valueOf(totalSteps).length()))
+				- String.valueOf(totalSteps).length()))
 				+ "│");
 		log("├────────────────────────────────────────────────────────────────────────────────┤");
 
@@ -1472,7 +1513,8 @@ public class TestExecutor {
 		if (xpath.length() > 70)
 			xpath = xpath.substring(0, 67) + "...";
 		if (!xpath.isEmpty()) {
-			log("│ XPath: " + xpath + " ".repeat(Math.max(1, 73 - xpath.length())) + "│");
+			// UPDATED: Changed label from "XPath:" to "Locator:" to accommodate multi-locator mobile strategies
+			log("│ Locator: " + xpath + " ".repeat(Math.max(1, 71 - xpath.length())) + "│");
 		}
 
 		log("└────────────────────────────────────────────────────────────────────────────────┘");
@@ -1537,7 +1579,6 @@ public class TestExecutor {
 		System.err.println("Full Stack Trace:");
 		e.printStackTrace();
 	}
-
 	private String getCurrentTime() {
 		return LocalDateTime.now().format(timeFormatter);
 	}
@@ -1643,8 +1684,23 @@ public class TestExecutor {
 
 			String platformLabel = icon + highlightedRole + ": ";
 
-			String rawDetail = (step.getValue() != null && !step.getValue().isEmpty()) ? step.getValue() :
-					(step.getXpath() != null ? step.getXpath() : "");
+			// --- UPDATED LOCATOR CLEANER FOR DASHBOARD ---
+			String rawDetail = "";
+			if (step.getValue() != null && !step.getValue().isEmpty()) {
+				rawDetail = step.getValue();
+			} else if (step.getXpath() != null && !step.getXpath().isEmpty()) {
+				String rawXpath = step.getXpath();
+				// Clean up technical prefixes for cleaner dashboard display visibility
+				if (rawXpath.startsWith("accessibility=")) {
+					rawDetail = "Accessibility ID: " + rawXpath.replace("accessibility=", "");
+				} else if (rawXpath.startsWith("id=")) {
+					rawDetail = "Resource ID: " + rawXpath.replace("id=", "");
+				} else if (rawXpath.startsWith("automator=")) {
+					rawDetail = "UIAutomator Engine";
+				} else {
+					rawDetail = rawXpath;
+				}
+			}
 
 			// Combine the role label with the step details
 			String detail = platformLabel + rawDetail;
@@ -1698,7 +1754,6 @@ public class TestExecutor {
 			// Fail silently - if the web window is navigated away or closed, we don't want to stop the mobile test
 		}
 	}
-
 	/**
 	 * Initializes a standard Web (Chrome) session and adds it to the pool.
 	 */

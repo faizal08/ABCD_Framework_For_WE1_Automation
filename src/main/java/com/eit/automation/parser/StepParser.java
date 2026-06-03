@@ -35,6 +35,35 @@ public class StepParser {
 		// verify element present or not present in an given page
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(element_present|exists)\\b.*", "element_present"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(element_absent|not_exists)\\b.*", "element_absent"));
+
+		// ========================================
+		// MOBILE SPECIFIC ACTIONS (Prioritized to prevent generic click capture)
+		// ========================================
+		// Swipe / Scroll (e.g., "swipe up", "scroll down")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(swipe|scroll_mobile)\\b.*", "swipe"));
+
+		// Long Press (e.g., "long press on the logo")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(long_press|longpress)\\b.*", "long_press"));
+
+		// Keyboard Management (e.g., "hide keyboard", "close keypad")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(hide\\s+keyboard|close\\s+keyboard|hide_keyboard)\\b.*", "hide_keyboard"));
+
+		// Device Back Button (e.g., "press back", "mobile back")
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(mobile_back|device_back)\\b.*", "mobile_back"));
+
+		// Tap (Alternative to click for mobile clarity)
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap)\\b.*", "tap"));
+
+		// Change the single dots (.) to dot-stars (.*)
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap_coordinate|click_coordinate|tap_xy)\\b.*", "tap_coordinate"));
+
+		// ========================================
+		// 5. FILE UPLOAD
+		// ========================================
+		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+for\\s+upload\\b.*", "waitforupload"));
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(upload|attach)\\b.*", "uploadfile"));
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(select|choose)\\s+file\\b.*", "uploadfile"));
+
 		// ========================================
 		// 1. VERIFICATION (Highest Priority - Assertions often start sentence)
 		// ========================================
@@ -84,13 +113,6 @@ public class StepParser {
 
 		// For Test Data Cleanup and Accessing Database
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(sql delete|db cleanup|execute sql)\\b.*", "sql_cleanup"));
-
-		// ========================================
-		// 5. FILE UPLOAD
-		// ========================================
-		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+for\\s+upload\\b.*", "waitforupload"));
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(upload|attach)\\b.*", "uploadfile"));
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(select|choose)\\s+file\\b.*", "uploadfile"));
 
 		// ========================================
 		// 5.5 AUTOIT (System Interactions)
@@ -218,38 +240,15 @@ public class StepParser {
 		VERIFY_PATTERNS.add(new StepPattern(".*\\bverify\\s+grid\\b.*", "verifygridvalue"));
 
 		// ========================================
-        // 9. SWITCH / FRAMES / WINDOWS
-       // ========================================
-       // --- ADD THESE TWO LINES FOR MULTI-SESSION SUPPORT ---
+		// 9. SWITCH / FRAMES / WINDOWS
+		// ========================================
+		// --- ADD THESE TWO LINES FOR MULTI-SESSION SUPPORT ---
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(switch_to|switchsession|switch_session|change_session)\\b.*", "switch_to"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(switch_to_user|switch_to_admin)\\b.*", "switch_to"));
-      // -----------------------------------------------------
+		// -----------------------------------------------------
 
 		ACTION_PATTERNS.add(new StepPattern(".*\\bswitch\\s+(to\\s+)?frame\\b.*", "switchtoframe"));
-
-		// ========================================
-		// MOBILE SPECIFIC ACTIONS
-		// ========================================
-
-		// Swipe / Scroll (e.g., "swipe up", "scroll down")
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(swipe|scroll_mobile)\\b.*", "swipe"));
-
-		// Long Press (e.g., "long press on the logo")
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(long_press|longpress)\\b.*", "long_press"));
-
-		// Keyboard Management (e.g., "hide keyboard", "close keypad")
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(hide\\s+keyboard|close\\s+keyboard|hide_keyboard)\\b.*", "hide_keyboard"));
-
-		// Device Back Button (e.g., "press back", "mobile back")
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(mobile_back|device_back)\\b.*", "mobile_back"));
-
-		// Tap (Alternative to click for mobile clarity)
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap)\\b.*", "tap"));
-
-		// Change the single dots (.) to dot-stars (.*)
-		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap_coordinate|click_coordinate|tap_xy)\\b.*", "tap_coordinate"));
 	}
-
 	/**
 	 * Parse test steps from text block - HANDLES ALL 75+ ACTION KEYWORDS
 	 */
@@ -289,7 +288,7 @@ public class StepParser {
 			String action = "";
 			String value = "";
 			String xpath = "";
-			String context = ""; // 👈 NEW
+			String context = "";
 
 			// CHECK FOR PIPE-DELIMITED FORMAT FIRST (Used by CSV Reader)
 			// Format: Action | Value | XPath | Context
@@ -316,7 +315,7 @@ public class StepParser {
 
 				// Create step immediately if valid
 				if (!action.isEmpty()) {
-					value = processPlaceholders(value); // <--- Ensure this is here
+					value = processPlaceholders(value);
 					xpath = processPlaceholders(xpath);
 					TestStep step = new TestStep(lineNumber, action, value, xpath);
 					step.setOriginalSentence(originalLine);
@@ -329,10 +328,8 @@ public class StepParser {
 			}
 
 			// CHECK FOR COMMA-DELIMITED FORMAT (Excel/Custom)
-			// Logic: Find the part that is purely an action keyword.
 			if (line.contains(",") && !line.contains("|")) {
-				String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1); // Split by comma respecting
-																						// quotes
+				String[] parts = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1); // Split by comma respecting quotes
 
 				int bestActionIndex = -1;
 				String bestAction = "";
@@ -344,11 +341,6 @@ public class StepParser {
 
 					String detected = detectAction(part);
 					if (!detected.isEmpty()) {
-						// Heuristic: Prefer exact matches or single-word commands
-						// e.g. "robotupload" vs "Upload Image (Robot)"
-						// "robotupload" -> action 'robotupload' -> exact match (or close)
-						// "Upload Image" -> action 'uploadfile' -> loose match
-
 						boolean isStrongMatch = part.equalsIgnoreCase(detected)
 								|| part.toLowerCase().matches("^[a-z]+$") // Single word
 								|| detected.equals("robotupload")
@@ -368,9 +360,6 @@ public class StepParser {
 					value = (parts.length > bestActionIndex + 1) ? parts[bestActionIndex + 1].trim() : "";
 					xpath = (parts.length > bestActionIndex + 2) ? parts[bestActionIndex + 2].trim() : "";
 
-					// NEW: Check if the action part itself contains the value (e.g. robotupload
-					// "File.jpg")
-					// This handles cases where the user forgot the comma between action and value
 					if (value.isEmpty()) {
 						String actionPart = parts[bestActionIndex];
 						List<String> internalQuotes = extractQuotedParts(actionPart);
@@ -391,10 +380,10 @@ public class StepParser {
 						context = contextBuilder.toString();
 					}
 
-					// Handle Quotes in Value/XPath if present (Excel sometimes adds them?)
+					// Handle Quotes in Value/XPath if present
 					value = value.replaceAll("^\"|\"$", "").replace("\"\"", "\"");
 					xpath = xpath.replaceAll("^\"|\"$", "").replace("\"\"", "\"");
-					value = processPlaceholders(value); // <--- Ensure this is here
+					value = processPlaceholders(value);
 					xpath = processPlaceholders(xpath);
 					TestStep step = new TestStep(lineNumber, bestAction, value, xpath);
 					step.setOriginalSentence(originalLine);
@@ -430,28 +419,28 @@ public class StepParser {
 
 			// Assign value, xpath, and context from extracted parts
 			for (String part : quotedParts) {
-				if (part.startsWith("//") || part.startsWith("(//")) {
+				// UPDATED: Support extraction of both traditional web XPaths AND native mobile locator prefixes
+				if (part.startsWith("//") || part.startsWith("(//") ||
+						part.startsWith("accessibility=") || part.startsWith("id=") || part.startsWith("automator=")) {
 					xpath = part;
-					logInfo("  ✓ XPath identified: " + xpath);
+					logInfo("  ✓ Locator identified: " + xpath);
 				} else if (value.isEmpty()) {
 					value = part;
 					logInfo("  ✓ Value identified: " + (value.length() > 50 ? value.substring(0, 50) + "..." : value));
 				} else if (context.isEmpty()) {
 					context = part;
-					logInfo("  ✓ Context identified: "
-							+ (context.length() > 50 ? context.substring(0, 50) + "..." : context));
+					logInfo("  ✓ Context identified: " + (context.length() > 50 ? context.substring(0, 50) + "..." : context));
 				}
 			}
 
-			// Fallback: extract xpath without quotes
-			// MODIFIED: Run this check even if quotedParts were found, because sometimes
-			// the value is quoted but the XPath is NOT (and might be stuck to the value)
+			// Fallback: extract xpath/locator without quotes
 			if (xpath.isEmpty()) {
-				logDebug("  ► Trying fallback XPath extraction (without quotes)...");
-				Matcher xpathMatcher = Pattern.compile("(//[^\\s\"]+)").matcher(line);
-				if (xpathMatcher.find()) {
-					xpath = xpathMatcher.group(1);
-					logInfo("  ✓ XPath found (unquoted): " + xpath);
+				logDebug("  ► Trying fallback locator extraction (without quotes)...");
+				// UPDATED: Patterns updated to fetch unquoted strings for mobile strategies as well
+				Matcher locatorMatcher = Pattern.compile("(//[^\\s\"]+|\\b(?:accessibility|id|automator)=[^\\s\"]+)").matcher(line);
+				if (locatorMatcher.find()) {
+					xpath = locatorMatcher.group(1);
+					logInfo("  ✓ Locator found (unquoted): " + xpath);
 				}
 			}
 
@@ -482,11 +471,12 @@ public class StepParser {
 				continue;
 			}
 
-			value = processPlaceholders(value); // <--- Ensure this is here
+			value = processPlaceholders(value);
 			xpath = processPlaceholders(xpath);
+
 			// Create test step
 			TestStep step = new TestStep(lineNumber, action, value, xpath);
-			step.setOriginalSentence(originalLine); // ✅ Save original sentence
+			step.setOriginalSentence(originalLine);
 			if (!context.isEmpty()) {
 				step.setContext(context);
 			}
@@ -497,7 +487,7 @@ public class StepParser {
 			logInfo("    Value:  " + (value != null && !value.isEmpty()
 					? (value.length() > 50 ? value.substring(0, 50) + "..." : value)
 					: "(empty)"));
-			logInfo("    XPath:  " + (xpath != null && !xpath.isEmpty()
+			logInfo("    Locator: " + (xpath != null && !xpath.isEmpty()
 					? (xpath.length() > 60 ? xpath.substring(0, 60) + "..." : xpath)
 					: "(empty)"));
 			logInfo("");
@@ -511,7 +501,6 @@ public class StepParser {
 
 		return steps;
 	}
-
 	/**
 	 * Detect action keyword from line - COMPREHENSIVE DETECTION FOR ALL 75+ ACTIONS
 	 * ORDER MATTERS: More specific actions must be checked BEFORE generic ones
@@ -520,8 +509,11 @@ public class StepParser {
 		String cleanedLine = removeQuotedText(line);
 		logDebug("    Analyzing: '" + line + "'");
 
+		// Check full line to ensure keywords stuck inside quotes are caught properly
+		String lowerLine = line.toLowerCase();
+
 		for (StepPattern stepPattern : ACTION_PATTERNS) {
-			if (stepPattern.pattern.matcher(cleanedLine.toLowerCase()).matches()) {
+			if (stepPattern.pattern.matcher(lowerLine).matches()) {
 				logDebug("    Match: " + stepPattern.action.toUpperCase() + " (Regex: " + stepPattern.pattern + ")");
 				return stepPattern.action;
 			}
@@ -540,11 +532,13 @@ public class StepParser {
 	 * TYPES
 	 */
 	private static String determineVerifyAction(String line, String baseAction, String value) {
-		String cleanedLine = removeQuotedText(line);
 		logDebug("    Refining verification type for: '" + line + "'");
 
+		// Lowercase full line to inspect both descriptive words and locators safely
+		String lowerLine = line.toLowerCase();
+
 		for (StepPattern stepPattern : VERIFY_PATTERNS) {
-			if (stepPattern.pattern.matcher(cleanedLine).matches()) {
+			if (stepPattern.pattern.matcher(lowerLine).matches()) {
 				logDebug("      → " + stepPattern.action.toUpperCase() + " (Regex: " + stepPattern.pattern + ")");
 				return stepPattern.action;
 			}
@@ -619,7 +613,6 @@ public class StepParser {
 				message);
 		return By.xpath(xpathExpression);
 	}
-
 	/**
 	 * Parse a single test step line
 	 */
@@ -657,7 +650,9 @@ public class StepParser {
 	public static String extractValue(String line) {
 		List<String> parts = extractQuotedParts(line);
 		for (String part : parts) {
-			if (!part.startsWith("//")) {
+			// UPDATED: Skip over mobile locators as well so they don't get misidentified as a text value
+			if (!part.startsWith("//") && !part.startsWith("(//") &&
+					!part.startsWith("accessibility=") && !part.startsWith("id=") && !part.startsWith("automator=")) {
 				return part;
 			}
 		}
@@ -665,22 +660,25 @@ public class StepParser {
 	}
 
 	/**
-	 * Extract xpath from line
+	 * Extract locator (xpath/id/accessibility) from line
 	 */
 	public static String extractXpath(String line) {
 		List<String> parts = extractQuotedParts(line);
 		for (String part : parts) {
-			if (part.startsWith("//")) {
+			// UPDATED: Instantly return if the quoted part matches a web or native mobile strategy
+			if (part.startsWith("//") || part.startsWith("(//") ||
+					part.startsWith("accessibility=") || part.startsWith("id=") || part.startsWith("automator=")) {
 				return part;
 			}
 		}
-		Matcher xpathMatcher = Pattern.compile("(//[^\\s\"]+)").matcher(line);
-		if (xpathMatcher.find()) {
-			return xpathMatcher.group(1);
+
+		// UPDATED: Fallback matcher tracking unquoted web XPaths or native mobile identifiers
+		Matcher locatorMatcher = Pattern.compile("(//[^\\s\"]+|\\b(?:accessibility|id|automator)=[^\\s\"]+)").matcher(line);
+		if (locatorMatcher.find()) {
+			return locatorMatcher.group(1);
 		}
 		return "";
 	}
-
 	// ========================================
 	// LOGGING HELPER METHODS
 	// ========================================
