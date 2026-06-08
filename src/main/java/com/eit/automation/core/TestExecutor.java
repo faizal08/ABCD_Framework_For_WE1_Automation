@@ -521,6 +521,65 @@ public class TestExecutor {
 	}
 
 	private void executeStep(TestStep step) throws Exception {
+		if (step == null) return;
+
+		// 🚀 MASTER CENTRAL INTERCEPTOR: Safe Property Extraction
+		if (step.getXpath() != null) {
+			step.setXpath(step.getXpath().replace("\"", "").trim());
+		}
+		if (step.getValue() != null) {
+			step.setValue(step.getValue().replace("\"", "").trim());
+		}
+		if (step.getContext() != null) {
+			step.setContext(step.getContext().replace("\"", "").trim());
+		}
+
+		// 1. GENERIC STRUCTURE EXTRACTOR FOR UPLOAD ACTIONS
+		if (step.getAction() != null && step.getAction().equalsIgnoreCase("uploadfile")) {
+
+			String fileTarget = null;
+			String locatorKeyTarget = null;
+
+			// Collect all available text locations where the parser could have dropped the parts
+			List<String> textPool = new ArrayList<>();
+			if (step.getValue() != null && !step.getValue().isEmpty()) textPool.add(step.getValue());
+			if (step.getXpath() != null && !step.getXpath().isEmpty()) textPool.add(step.getXpath());
+			if (step.getContext() != null && !step.getContext().isEmpty()) textPool.add(step.getContext());
+
+			// Sort out which text string is the path and which is the tracking map key alias
+			for (String text : textPool) {
+				if (text.contains("/") || text.contains("\\")) {
+					fileTarget = text;
+				} else {
+					locatorKeyTarget = text;
+				}
+			}
+
+			// Reassign parameters cleanly to their proper object wrapper fields
+			if (locatorKeyTarget != null) {
+				step.setXpath(locatorKeyTarget);
+			}
+			if (fileTarget != null) {
+				step.setValue(fileTarget);
+			}
+
+			log("  🔀 INTERCEPTOR: Structural assignment complete. Key: [" + step.getXpath() + "], Path: [" + step.getValue() + "]");
+		}
+
+		// 2. Resolve Custom Element Mappings from Properties Map files
+		if (step.getXpath() != null && !step.getXpath().isEmpty() && !step.getXpath().startsWith("//") && !step.getXpath().startsWith("(")) {
+			String resolvedXpath = com.eit.automation.core.LocatorMapper.getXPath(step.getXpath());
+			step.setXpath(resolvedXpath);
+		}
+
+		// 3. Resolve Value parameters (Crucial for hybrid mobile keyword fallback handling)
+		if (step.getValue() != null && !step.getValue().isEmpty() && !step.getValue().contains("/") && !step.getValue().contains("\\")) {
+			String resolvedValue = com.eit.automation.core.LocatorMapper.getXPath(step.getValue());
+			step.setValue(resolvedValue);
+		}
+		// 🚀 MASTER CENTRAL INTERCEPTOR END
+
+		// --- Continue with your original framework extraction logic ---
 		String action = step.getAction().toLowerCase();
 		String value = step.getValue();
 		String xpath = step.getXpath();
@@ -528,17 +587,15 @@ public class TestExecutor {
 
 		log("  ⚙ Action: " + action.toUpperCase());
 
-    /*// HOTFIX: Override file upload path with user provided path
-    if ((action.equals("uploadfile") || action.equals("robotupload")) && value != null) {
-       log("  ⚠ HOTFIX: Overriding file path with 'C:\\Vehicle Image\\Auto.jpg'");
-       value = "C:\\Vehicle Image\\Auto.jpg";
-    }*/
+   /*// HOTFIX: Override file upload path with user provided path
+   if ((action.equals("uploadfile") || action.equals("robotupload")) && value != null) {
+      log("  ⚠ HOTFIX: Overriding file path with 'C:\\Vehicle Image\\Auto.jpg'");
+      value = "C:\\Vehicle Image\\Auto.jpg";
+   }*/
 
-		// 1. PAGEFACTORY LOOKUP (If XPath is empty, try to match value/context to a
-		// Page Object field)
+		// 1. PAGEFACTORY LOOKUP (If XPath is empty, try to match value/context to a Page Object field)
 		if ((xpath == null || xpath.isEmpty()) && (value != null && !value.isEmpty())) {
 			if (pageObjectManager != null) {
-
 				WebElement element = pageObjectManager.findElementByName(value);
 				if (element != null) {
 					log("  → Found PageFactory Element: " + value);
@@ -546,11 +603,10 @@ public class TestExecutor {
 			}
 		}
 
-		// Auto-generate XPath if empty (Legacy fallback)
+		// Auto-generate XPath if empty (Legacy fallback execution safety setup)
 		if (xpath == null || xpath.isEmpty()) {
 			if (value != null && !value.isEmpty()) {
 
-				// --- ADDED THIS CHECK ---
 				// Detect if the value is actually an XPath string instead of a label
 				boolean isDirectXPath = value.startsWith("//") || value.startsWith("(");
 
@@ -580,6 +636,12 @@ public class TestExecutor {
 		if ((xpath == null || xpath.isEmpty()) && (value == null || value.isEmpty())) {
 			log("  ⚠ Both XPath and Value empty - skipping");
 		}
+
+		// Synchronize local tracking modifications back to master TestStep object reference
+		step.setXpath(xpath);
+		step.setValue(value);
+
+
 		switch (action) {
 			case "openurl":
 			case "navigate":
