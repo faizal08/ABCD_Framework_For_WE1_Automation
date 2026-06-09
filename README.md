@@ -19,6 +19,7 @@
 
 ## 📖 Overview
 The **ABCD Hybrid Framework** is an advanced evolution of the keyword-driven approach, designed to handle complex ecosystems where **Web Portals** and **Mobile Applications** (Android/iOS) must work in sync. Whether you are validating an Admin dashboard on Chrome or a Driver's And Customers real-time response and interaction on an Emulator, this framework manages all sessions through a single Excel-based logic using selenium and appium.
+The core philosophy is driven by the company motive: **"Any Body Can Develop"**—allowing even non-technical to build bulletproof automation scripts without writing code.
 
 ![Framework Screenshot](framework_screenshot.png)
 ---
@@ -47,6 +48,7 @@ This framework operates on a **Multi-Session Driver Pool** logic:
 * **💾 Data Persistence:** Capture values from one platform (e.g., an Order ID from Mobile) and use it on another (e.g., searching on Web) using the `>>` operator.
 * **🎥 Synchronized Media Logs:** Automated video recording (MP4) and failure screenshots for every session.
 * **🗄️ Database Integration:** Direct PostgreSQL connectivity for cleaning up test data or verifying backend records.
+* **📱 Native Multi-Locator Fallbacks:** Seamlessly accepts both standard web **XPaths** and native, high-speed Appium identifier patterns (**Accessibility IDs**, **Resource IDs**, and **Android UI Automator expression strings**) in the exact same sheet column.
 
 ---
 
