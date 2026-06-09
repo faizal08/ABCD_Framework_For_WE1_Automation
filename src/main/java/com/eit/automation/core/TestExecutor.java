@@ -523,39 +523,70 @@ public class TestExecutor {
 	private void executeStep(TestStep step) throws Exception {
 		if (step == null) return;
 
-		// 🚀 MASTER CENTRAL INTERCEPTOR: Safe Property Extraction
+		// 🚀 MASTER CENTRAL INTERCEPTOR: Smart Safe Property Extraction
 		if (step.getXpath() != null) {
-			step.setXpath(step.getXpath().replace("\"", "").trim());
+			String xp = step.getXpath().trim();
+			// Protect native mobile engines, and handle web XPaths using smart wrapper peeling
+			if (!xp.contains("automator=")) {
+				if (xp.startsWith("\"") && xp.endsWith("\"") && xp.length() > 1) {
+					xp = xp.substring(1, xp.length() - 1).trim();
+				}
+				step.setXpath(xp);
+			} else {
+				step.setXpath(xp);
+			}
 		}
 		if (step.getValue() != null) {
-			step.setValue(step.getValue().replace("\"", "").trim());
+			String val = step.getValue().trim();
+			if (!val.contains("automator=")) {
+				if (val.startsWith("\"") && val.endsWith("\"") && val.length() > 1) {
+					val = val.substring(1, val.length() - 1).trim();
+				}
+				step.setValue(val);
+			} else {
+				step.setValue(val);
+			}
 		}
 		if (step.getContext() != null) {
-			step.setContext(step.getContext().replace("\"", "").trim());
+			String ctx = step.getContext().trim();
+			if (!ctx.contains("automator=")) {
+				if (ctx.startsWith("\"") && ctx.endsWith("\"") && ctx.length() > 1) {
+					ctx = ctx.substring(1, ctx.length() - 1).trim();
+				}
+				step.setContext(ctx);
+			} else {
+				step.setContext(ctx);
+			}
 		}
 
 		// 1. GENERIC STRUCTURE EXTRACTOR FOR UPLOAD ACTIONS
+		// Smarter hybrid selector parsing: Isolates direct web XPaths & Appium selectors from valid file paths
 		if (step.getAction() != null && step.getAction().equalsIgnoreCase("uploadfile")) {
 
 			String fileTarget = null;
 			String locatorKeyTarget = null;
 
-			// Collect all available text locations where the parser could have dropped the parts
 			List<String> textPool = new ArrayList<>();
 			if (step.getValue() != null && !step.getValue().isEmpty()) textPool.add(step.getValue());
 			if (step.getXpath() != null && !step.getXpath().isEmpty()) textPool.add(step.getXpath());
 			if (step.getContext() != null && !step.getContext().isEmpty()) textPool.add(step.getContext());
 
-			// Sort out which text string is the path and which is the tracking map key alias
 			for (String text : textPool) {
-				if (text.contains("/") || text.contains("\\")) {
+				// Rule A: If it clearly matches direct XPath or dynamic Appium prefix strings, it's a locator
+				if (text.startsWith("//") || text.startsWith("(") ||
+						text.startsWith("accessibility=") || text.startsWith("id=") || text.startsWith("automator=")) {
+					locatorKeyTarget = text;
+				}
+				// Rule B: If it doesn't match Rule A but contains slashes, it is definitely the target file path
+				else if (text.contains("/") || text.contains("\\")) {
 					fileTarget = text;
-				} else {
+				}
+				// Rule C: Pure property shorthands fall back cleanly as the element locator mapping key
+				else {
 					locatorKeyTarget = text;
 				}
 			}
 
-			// Reassign parameters cleanly to their proper object wrapper fields
 			if (locatorKeyTarget != null) {
 				step.setXpath(locatorKeyTarget);
 			}
@@ -567,13 +598,19 @@ public class TestExecutor {
 		}
 
 		// 2. Resolve Custom Element Mappings from Properties Map files
-		if (step.getXpath() != null && !step.getXpath().isEmpty() && !step.getXpath().startsWith("//") && !step.getXpath().startsWith("(")) {
+		// Bypass translation rules instantly if it's already a direct raw XPath or native Appium hook
+		if (step.getXpath() != null && !step.getXpath().isEmpty()
+				&& !step.getXpath().startsWith("//") && !step.getXpath().startsWith("(")
+				&& !step.getXpath().startsWith("accessibility=") && !step.getXpath().startsWith("id=") && !step.getXpath().startsWith("automator=")) {
 			String resolvedXpath = com.eit.automation.core.LocatorMapper.getXPath(step.getXpath());
 			step.setXpath(resolvedXpath);
 		}
 
 		// 3. Resolve Value parameters (Crucial for hybrid mobile keyword fallback handling)
-		if (step.getValue() != null && !step.getValue().isEmpty() && !step.getValue().contains("/") && !step.getValue().contains("\\")) {
+		if (step.getValue() != null && !step.getValue().isEmpty()
+				&& !step.getValue().contains("/") && !step.getValue().contains("\\")
+				&& !step.getValue().startsWith("//") && !step.getValue().startsWith("(")
+				&& !step.getValue().startsWith("accessibility=") && !step.getValue().startsWith("id=") && !step.getValue().startsWith("automator=")) {
 			String resolvedValue = com.eit.automation.core.LocatorMapper.getXPath(step.getValue());
 			step.setValue(resolvedValue);
 		}
