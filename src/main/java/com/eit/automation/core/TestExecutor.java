@@ -55,6 +55,7 @@ public class TestExecutor {
 	private Map<String, WebDriverWait> waitPool = new HashMap<>(); // Stores corresponding wait objects
 	private String currentSessionRole = "web"; // Tracks who is currently active (e.g., "user", "driver", "admin")
 
+	private boolean isHybridFlow = false;
 	// Action handlers
 	private WaitActions waitActions;
 	private ClickActions clickActions;
@@ -114,6 +115,11 @@ public class TestExecutor {
 	/**
 	 * Preserves all your existing Chrome functionalities while adding them to the Pool
 	 */
+
+	public void setHybridFlow(boolean isHybrid) {
+		this.isHybridFlow = isHybrid;
+	}
+
 	public void initializeWebDriver(String role) {
 		log("→ Setting up Chrome Browser for Role: " + role.toUpperCase());
 
@@ -130,8 +136,7 @@ public class TestExecutor {
 		prefs.put("profile.password_manager_leak_detection", false);
 		options.setExperimentalOption("prefs", prefs);
 
-		// --- PRESERVED: Your exact original Arguments ---
-		options.addArguments("--start-maximized");
+		// --- FIXED: Removed "--start-maximized" to prevent hard OS maximization lock at boot ---
 		options.addArguments("--disable-notifications");
 		options.addArguments("--disable-features=SafeBrowsingPasswordCheck");
 		options.setExperimentalOption("detach", true);
@@ -153,25 +158,18 @@ public class TestExecutor {
 		log("✓ Web Session [" + role + "] is active and ready");
 	}
 
+	/**
+	 * Cleaned: Responsible only for instantiating the session cleanly.
+	 * Dimension changes are deferred to runtime step evaluation.
+	 */
 	public void setupWebDriver() {
-		log("🌐 Initializing Chrome Browser...");
+		log("🌐 Initializing Chrome Browser Framework Context...");
 
-		// 1. Initialize the driver
+		// Initialize the driver session
 		initializeWebDriver("web");
 
-		if (this.driver != null) {
-			log("📐 Restoring browser to the far left (X=0)...");
-
-			// Sets width to half-screen (960) and height to full (1080)
-			this.driver.manage().window().setSize(new org.openqa.selenium.Dimension(960, 1080));
-
-			// Positions the window at the absolute top-left corner
-			this.driver.manage().window().setPosition(new org.openqa.selenium.Point(0, 0));
-		}
-
-		log("✓ Web Session [web] is active and locked to the left");
+		log("✓ Web Session [web] successfully registered in universal context pools.");
 	}
-
 	/**
 	 * Initializes a Mobile (Android/Appium) session for a specific role.
 	 * @param role 'user' or 'driver'
@@ -297,6 +295,43 @@ public class TestExecutor {
 	public boolean run(String sheetName, List<TestStep> steps, String testCaseName) {
 		long testStartTime = System.currentTimeMillis();
 
+		// 🚀 1. AUTO DETECTION PRE-SCAN: Check if this Excel sheet contains any hybrid switches
+		this.isHybridFlow = false;
+		if (steps != null) {
+			for (TestStep step : steps) {
+				if (step.getAction() != null) {
+					String action = step.getAction().toLowerCase().trim();
+					String value = step.getValue() != null ? step.getValue().toLowerCase().trim() : "";
+
+					if ((action.equals("switch_to") || action.equals("switchsession")) &&
+							(value.equals("user") || value.equals("driver"))) {
+						this.isHybridFlow = true;
+						break; // Hybrid signature found, stop searching
+					}
+				}
+			}
+		}
+
+		// 🚀 2. RUNTIME VIEWPORT ADJUSTMENT: Dynamically apply layout sizes based on the pre-scan
+		WebDriver webDriverInstance = driverPool.get("web");
+		if (webDriverInstance != null) {
+			try {
+				// ⏳ STABILIZATION PAUSE: Gives Chrome window rendering thread 500ms to settle down
+				Thread.sleep(500);
+
+				if (this.isHybridFlow) {
+					log("📱 Hybrid Flow Detected via Runtime Pre-Scan! Split-screen layout enabled. Adjusting position to X=0...");
+					webDriverInstance.manage().window().setSize(new org.openqa.selenium.Dimension(960, 1080));
+					webDriverInstance.manage().window().setPosition(new org.openqa.selenium.Point(0, 0));
+				} else {
+					log("🖥️ Web-Only Flow Detected via Runtime Pre-Scan! Maximizing browser workspace...");
+					webDriverInstance.manage().window().maximize();
+				}
+			} catch (Exception e) {
+				log("⚠️ Warning: Failed to apply dynamic browser window configuration changes: " + e.getMessage());
+			}
+		}
+
 		totalStepsExecuted = 0;
 		passedSteps = 0;
 		failedSteps = 0;
@@ -323,7 +358,7 @@ public class TestExecutor {
 				if (action.equals("switch_to") || action.equals("switchsession")) {
 					logStepHeader(stepNumber, steps.size(), step);
 					try {
-						// 🚀 FIX: Sanitize the target role value to lowercase immediately
+						// FIX: Sanitize the target role value to lowercase immediately
 						String targetRole = (step.getValue() != null) ? step.getValue().toLowerCase().trim() : "";
 
 						if (targetRole.isEmpty()) {
@@ -337,7 +372,7 @@ public class TestExecutor {
 						this.driver = driverPool.get(targetRole);
 						this.wait = waitPool.get(targetRole);
 
-						// 🚀 CRITICAL FIX: Re-wire your interaction engines (ClickActions, InputActions) mid-test loop!
+						// CRITICAL FIX: Re-wire your interaction engines (ClickActions, InputActions) mid-test loop!
 						refreshActionHandlers();
 
 						// MOBILE STABILIZATION: Give Appium 3 seconds to bring the app viewport to the front cleanly
@@ -443,7 +478,6 @@ public class TestExecutor {
 	public boolean run(List<TestStep> steps) {
 		return run("Default", steps, "Unnamed Test Case");
 	}
-
 	/**
 	 * Switches the active driver and wait objects to the requested role.
 	 * Role can be 'web', 'user', or 'driver'.
