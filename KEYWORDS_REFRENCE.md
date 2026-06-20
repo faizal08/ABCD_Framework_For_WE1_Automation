@@ -47,28 +47,313 @@ Every automated instruction written inside **Column E** must follow a strict **3
 4. **Locator / XPath:** The selector value or properties key, which **must always be enclosed in double quotes (`""`)**.
 
 ---
-### 📋 Formatting Syntax Reference Examples
+## 🛑 💡 QUICK REFERENCE FOR WRITING EXCEL TEST CASES 💡 🛑
 
-Review these real execution scenarios to understand how empty parameters and quote structures change based on the action type:
+> ### ⚠️ CRITICAL SYNTAX RULE REMINDER
+> Every line written inside **Column E** of your Excel sheet MUST use the **3-comma rule**:
+> `Test Step Description , Action , Value , "Target/Locator"`
+> *Locators and file paths must always be wrapped in **double quotes (`""`)**. Leave fields completely empty when they are "Not Needed".*
 
-#### 1. Standard Field Input (Text Entry)
-`1.Enter Email, type, super_admin@gmail.com, "web.global.login.email"`
+### 📊 Keywords for Web & Mobile Automation
 
-#### 2. Click Action (No Value Parameter)
-`2.Click Submit, click, , "web.global.action.submit"`
-> 📌 **Note:** Since submit has no value, the value place is left empty, which is why there are double commas (,,) there.
+<table>
+  <thead>
+    <tr style="background-color: #1a202c; color: #ffffff;">
+      <th>Test Step Description</th>
+      <th>Action</th>
+      <th>Value</th>
+      <th>Target (XPath/ID)</th>
+      <th> Values That Are Accepted </th>
+    </tr>
+  </thead>
+  <tbody>
+    <!-- WEB SPECIFIC KEYWORDS SUBSECTION -->
+    <tr style="background-color: #ebf8ff; font-weight: bold;">
+      <td colspan="5" style="color: #2b6cb0; padding: 10px;">🌐 SUBSECTION 1: WEB SPECIFIC KEYWORDS</td>
+    </tr>
+    <tr>
+      <td>Switch to Super admn</td>
+      <td><code>switch_to</code></td>
+      <td>web</td>
+      <td><i>Not Needed</i></td>
+      <td>Accepts: <code>user</code>, <code>driver</code>, <code>web</code></td>
+    </tr>
+    <tr>
+      <td>Click Submit</td>
+      <td><code>click</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"web.global.action.submit"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Enter Bank Name</td>
+      <td><code>type</code></td>
+      <td>HDFC Bank</td>
+      <td>"admin.drivers.bankname.input"</td>
+      <td>Any text written here will be typed into the input field of the given locator.</td>
+    </tr>
+    <tr>
+      <td>Upload Customer Photo</td>
+      <td><code>uploadfile</code></td>
+      <td>"src/main/resources/test-data/autodriver.jpg"</td>
+      <td>"admin.drivers.profile_image.file"</td>
+      <td>The file path value <b>must</b> be written in double quotes [" "].</td>
+    </tr>
+    <tr>
+      <td>Open Admin Panel</td>
+      <td><code>openurl</code></td>
+      <td>https://dev.we1.co/#/login</td>
+      <td><i>Not Needed</i></td>
+      <td>Write the exact URL you need to open.</td>
+    </tr>
+    <tr>
+      <td>Wait for phot upload</td>
+      <td><code>wait</code></td>
+      <td>3000</td>
+      <td><i>Not Needed</i></td>
+      <td>Write the time in milliseconds (e.g., if 2 seconds are needed, write 2000).</td>
+    </tr>
+    <tr>
+      <td>Wait For Dahboared to Apper</td>
+      <td><code>wait_until_visible</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"web.global.menu.dashboard"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Scroll Grid Right</td>
+      <td><code>tab</code></td>
+      <td>5</td>
+      <td>"admin.drivers.name_filter.input"</td>
+      <td>Provide the property locator key from which the tab action should begin, and the number of tabs required to reach the target element.</td>
+    </tr>
+    <tr>
+      <td>Check Deleivery Service Not exists</td>
+      <td><code>element_absent</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"admin.city_admin.chk_web_delivery"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Check Transport Menu exists</td>
+      <td><code>element_present</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"admin.transport.menu.card"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Map City Boundary</td>
+      <td><code>draw    polygon</code></td>
+      <td>"-120;-120 : 120;-120 : 120;120 : -120;120 : -120;-120"</td>
+      <td>"//div[@class='ol-layer']//canvas"</td>
+      <td>The coordinate sequence string <b>must</b> be wrapped in double quotes. Use raw XPaths here (do not use property keys).</td>
+    </tr>
+    <tr>
+      <td>Select First Option</td>
+      <td><code>arrow_down</code></td>
+      <td><i>No value neded</i></td>
+      <td>"admin.store.location.input"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Press Enter</td>
+      <td><code>press_enter</code></td>
+      <td><i>No Value Needed</i></td>
+      <td>"admin.store.location.input"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Verify Delivery Services Heading</td>
+      <td><code>verify</code></td>
+      <td><i>No Value Needed</i></td>
+      <td>"admin.deliveryservice.header"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Enter Dynamic User Name</td>
+      <td><code>type</code></td>
+      <td>customer_{timestamp}>>customerName</td>
+      <td>"customer.fullname.input"</td>
+      <td>Generates dynamic runtime parameters using expressions like <code>{timestamp}</code> or <code>{randomAlpha}</code>.</td>
+    </tr>
+    <tr>
+      <td>Enter Random Phone Number</td>
+      <td><code>type</code></td>
+      <td>{randomPhone}</td>
+      <td>"admin.drivers.phone.input"</td>
+      <td>Generates a random Indian mobile phone format automatically via <code>{randomPhone}</code>.</td>
+    </tr>
+    <tr>
+      <td>Search dymanic name</td>
+      <td><code>type</code></td>
+      <td>{ customerName }</td>
+      <td>"admin.customer name.input"</td>
+      <td>Passes a previously saved runtime variable by wrapping its name inside curly braces <code>{variableName}</code>.</td>
+    </tr>
+    <!-- MOBILE SPECIFIC KEYWORDS SUBSECTION -->
+    <tr style="background-color: #fef3c7; font-weight: bold;">
+      <td colspan="5" style="color: #b45309; padding: 10px;">📱 SUBSECTION 2: MOBILE SPECIFIC KEYWORDS</td>
+    </tr>
+    <tr>
+      <td>Load Driver App</td>
+      <td><code>switch_to</code></td>
+      <td>driver</td>
+      <td><i>Not Needed</i></td>
+      <td>Accepts: <code>user</code>, <code>driver</code>, <code>web</code></td>
+    </tr>
+    <tr>
+      <td>Enter Mobile Number</td>
+      <td><code>type</code></td>
+      <td>9967110008</td>
+      <td>"mobile.driver.edit_text.input"</td>
+      <td>Any value written here will be typed directly into the targeted mobile input locator.</td>
+    </tr>
+    <tr>
+      <td>Click submit</td>
+      <td><code>tap</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"mobile.driver.submit.btn"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Wait For Popup</td>
+      <td><code>wait_until_visible</code></td>
+      <td><i>Not Needed</i></td>
+      <td>"mobile.driver.independent_contractor.checkbox"</td>
+      <td>No Value Needed</td>
+    </tr>
+    <tr>
+      <td>Drag Page Layout Upward</td>
+      <td><code>swipe</code></td>
+      <td>up</td>
+      <td><i>Not Needed</i></td>
+      <td>Accepts <code>up</code> (to swipe up the screen) or <code>down</code> (to swipe down the screen). Swipes the general viewport context.</td>
+    </tr>
+    <tr>
+      <td>Force Driver Location</td>
+      <td><code>set_location</code></td>
+      <td>13.0533;80.2514</td>
+      <td><i>Not Needed</i></td>
+      <td>Injects explicit global coordinates directly into the active device instance. Enter as <code>Latitude;Longitude</code>.</td>
+    </tr>
+    <tr>
+      <td>Click Online Toggle</td>
+      <td><code>tap_coordinate</code></td>
+      <td>986:1936</td>
+      <td><i>Not Needed</i></td>
+      <td>Performs a point click interaction directly on the device display using specific pixel offsets (<code>X:Y</code>) obtained from Appium Inspector.</td>
+    </tr>
+  </tbody>
+</table>
 
-#### 3. Static Timeout Wait (No Locator Parameter)
-`3.wait for upload, wait, 3000, `
-> 📌 **Note:** In this case, the XPath is not there, so that field is left empty.
+---
 
-#### 4. Document Upload Paths
-`4.Upload Profile Image, uploadfile, "src/main/resources/test-data/customer.jpg", "admin.customer.upload_profile_img"`
-> 📌 **Note:** For photo upload, the value file path should also be in double quotes.
+## 📋 ⚡ Excel Sheet Writing Helper [Copy paste action formats from this section]
 
-#### 5. Context Switch (No Locator Parameter)
-`5.Load Driver App, switch_to, driver, `
-> 📌 **Note:** Here, for switching to the driver mobile app, there is no XPath, so leave it empty. Always agree to the 3-comma rule.
+> **💡 QUICK COPIER GUIDE:** The lines below are designed for zero-typing script creation. Simply highlight the text line, copy it, and paste it directly into **Column E** of your Excel automation files.
+
+---
+
+### <span style="color:#e53e3e; font-size:22px; font-weight:bold;"># 💻 WEB AUTOMATION KEYWORD FORMATS COPY PASTE FROM IT #</span>
+
+<br>
+
+#### **# 🔄 “switch_to” Keyword Format #**
+`Switch to User App/Driver App/Super Admin,switch_to,user/driver/web,`
+
+#### **# 🖱️ “click” Keyword Format #**
+`Click description,click,,"Locator/Xpath"`
+
+#### **# ⌨️ “type” Keyword Format #**
+`Enter Description,type,value,"Locator/Xpath"`
+
+#### **# 🎲 “type” Keyword Format while using Dynamic Data Generation #**
+`Enter Description,type,name{randomAlpha}/{timestamp}>>variableName,"Locator/Xpath"`
+
+#### **# 🔍 “type” Keyword Format for searching dynamically created Data for example customer or driver #**
+`Filter Variable Name,type,{variableName},"Locator/Xpath"`
+
+#### **# 📱 “type” Keyword Format for dynamic mobile number generation #**
+`Enter Mobile Number,type,{randomPhone}>>phoneNumber,"Locator/Xpath"`
+
+#### **# 🔎 “type” Keyword Format for searching dynamically created phone Number #**
+`Filter Phone Number,type,{randomPhone},"Locator/Xpath"`
+
+#### **# 📁 “uploadfile” Keyword Format #**
+`Upload Description,uploadfile,"src/main/resources/test-data/photoName.format","Locator/Xpath"`
+
+#### **# 🌐 “openurl” Keyword Format #**
+`Go To Url,openurl,[Type url Here],`
+
+#### **# ⏳ “wait” Keyword Format #**
+`Wait For Description,wait,2000[Enter Wait Time In This Format Milli Second],`
+
+#### **# 👁️ “wait_until_visible” Keyword Format #**
+`Wait For Descrption,wait_until_visible,,"Locator/Xpath"`
+
+#### **# 📑 “tab” Keyword Format #**
+`Scroll Grid,tab,10[Enter Tab Number Required],"Locator/Xpath"`
+
+#### **# ❌ “element_absent” Keyword Format #**
+`Check Element Dont exists,element_absent,,"Locator/Xpath"`
+
+#### **# 🛡️ “element_present” Keyword Format #**
+`Check Element exists,element_present,,"Locator/Xpath"`
+
+#### **# 🗺️ “draw polygon” Keyword Format #**
+`Map Polygon,draw polygon,"-120;-120 : 120;-120 : 120;120 : -120;120 : -120;-120[Enter Cordinate in this Format in double quotes]","Xpath[Use Xapth Only in This Case don’t use Locator]"`
+
+#### **# 🔽 “arrow_down” Keyword Format #**
+`Select From Dropdown,arrow_down,,"Locator/Xpath"`
+
+#### **# ↩️ “press_enter” Keyword Format #**
+`Enter Description,press_enter,,"Locator/Xpath"`
+
+#### **# ✅ “verify” Keyword Format #**
+`Verify Description,verify,,"Locator/Xpath"`
+
+---
+
+### <span style="color:#2b6cb0; font-size:22px; font-weight:bold;"># 📱 MOBILE AUTOMATION KEYWORD FORMATS COPY PASTE FROM IT #</span>
+
+<br>
+
+#### **# 🔄 “switch_to” Keyword Format #**
+`Switch to User App/Driver App/Super Admin,switch_to,user/driver/web,`
+
+#### **# 🎯 “tap” Keyword Format #**
+`Click Description,tap,,"Locator"`
+
+#### **# ⌨️ “type” Keyword Format #**
+`Enter Description,type,value,"Locator"`
+
+#### **# 🎲 “type” Keyword Format while using Dynamic Data Generation #**
+`Enter Description,type,name{randomAlpha}/{timestamp}>>variableName,"Locator"`
+
+#### **# 🔍 “type” Keyword Format for Entering dynamically created Data for example customer or driver #**
+`Enter Variable Name,type,{variableName},"Locator"`
+
+#### **# 📱 “type” Keyword Format for dynamic mobile number generation #**
+`Enter Mobile Number,type,{randomPhone}>>phoneNumber,"Locator"`
+
+#### **# 🔎 “type” Keyword Format for entering dynamically created phone Number #**
+`Enter Phone Number,type,{randomPhone},"Locator"`
+
+#### **# 📁 “uploadfile” Keyword Format #**
+`Upload Description,uploadfile,"src/main/resources/test-data/photoName.format","Locator"`
+
+#### **# 👁️ “wait_until_visible” Keyword Format #**
+`Wait For Descrption,wait_until_visible,,"Locator"`
+
+#### **# ↕️ “swipe” Keyword Format #**
+`Drag Page Layout Upward/Downward,swipe,up/down,`
+
+#### **# 📍 “tap_coordinate” Keyword Format #**
+`Click Description,tap_coordinate,75:209[Type Cordinate in this formatt],COORDINATE_MODE`
+
+#### **# 🗺️ “set_location” Keyword Format #**
+`Set Emulator Location, set_location,13.0533;80.2514 [Type Cordinate in this format],`
+
 ---
 
 ## 🚀 1. Hybrid Orchestration (Multi-Session)
