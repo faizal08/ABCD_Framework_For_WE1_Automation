@@ -1460,6 +1460,49 @@ public class TestExecutor {
 				}
 				break;
 
+			case "reload_app":
+				log("🔄 Custom Keyword Triggered: [reload_app] for target role: [" + value.toUpperCase() + "]");
+
+				// 1. Verify if the driver exists in our universal pool
+				if (getDriverPool() != null && getDriverPool().containsKey(value)) {
+					org.openqa.selenium.WebDriver mobileDriverInstance = getDriverPool().get(value);
+
+					if (mobileDriverInstance instanceof io.appium.java_client.android.AndroidDriver) {
+						io.appium.java_client.android.AndroidDriver androidDriver = (io.appium.java_client.android.AndroidDriver) mobileDriverInstance;
+
+						// 2. Fetch the unique package name using the target configuration property key
+						String appPackage = config.getProperty(value + ".app.package");
+
+						if (appPackage != null && !appPackage.isEmpty()) {
+							try {
+								log("   • Closing process: " + appPackage);
+								androidDriver.terminateApp(appPackage);
+
+								log("   • Clearing all storage caches & user sessions...");
+								androidDriver.executeScript("mobile: clearApp", java.util.Map.of("appId", appPackage));
+
+								log("   • Launching completely clean slate app instance...");
+								androidDriver.activateApp(appPackage);
+
+								// 3. Keep the active executor pointer context focused on the reloaded app
+								switchSession(value);
+								log("✓ App [" + value.toUpperCase() + "] successfully reloaded to its onboarding screens!");
+
+							} catch (Exception e) {
+								log("❌ Error executing reload_app keyword: " + e.getMessage());
+								throw new RuntimeException(e);
+							}
+						} else {
+							log("❌ Error: Missing property mapping configuration for key: '" + value + ".app.package'");
+						}
+					} else {
+						log("❌ Error: Target session [" + value + "] is not an active Appium AndroidDriver instance.");
+					}
+				} else {
+					log("❌ Error: Cannot reload app. No active session found in driver pool for role: [" + value + "]");
+				}
+				break;
+
 			case "set_location":
 				try {
 					// 🚀 UPDATED: Splitting by semicolon (;) to handle your single text string format smoothly

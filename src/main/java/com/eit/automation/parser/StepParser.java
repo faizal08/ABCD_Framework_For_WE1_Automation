@@ -39,6 +39,9 @@ public class StepParser {
 		// ========================================
 		// MOBILE SPECIFIC ACTIONS (Prioritized to prevent generic click capture)
 		// ========================================
+
+		// Reload App (Wipes data cache completely and opens from onboarding)
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(reload_app|reloadapp|restart_app)\\b.*", "reload_app"));
 		// Swipe / Scroll (e.g., "swipe up", "scroll down")
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(swipe|scroll_mobile)\\b.*", "swipe"));
 
