@@ -303,10 +303,12 @@ public class TestExecutor {
 					String action = step.getAction().toLowerCase().trim();
 					String value = step.getValue() != null ? step.getValue().toLowerCase().trim() : "";
 
-					if ((action.equals("switch_to") || action.equals("switchsession")) &&
-							(value.equals("user") || value.equals("driver"))) {
-						currentSheetIsHybrid = true;
-						break; // Hybrid signature found inside this specific sheet
+					if (action.equals("switch_to") || action.equals("switchsession")) {
+						// ✅ FIXED: Removed the duplicate "String value =" re-declaration line entirely
+						if (!value.isEmpty() && !value.equals("web")) {
+							currentSheetIsHybrid = true;
+							break; // Found a dynamic mobile execution target (store, user, driver, etc.)!
+						}
 					}
 				}
 			}
