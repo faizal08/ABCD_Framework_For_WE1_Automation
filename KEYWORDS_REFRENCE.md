@@ -250,6 +250,20 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <td><i>Not Needed</i></td>
     <td>Accepts: <code>user</code>, <code>driver</code>, <code>store</code>. Restarts the app from a clean baseline session state.</td>
   </tr>
+<tr>
+    <td>Click If Element Is Present</td>
+    <td><code>tap_if_present</code></td>
+    <td>Not Needed</td>
+    <td><i>"mobile.driver.independent_contractor.checkbox"</i></td>
+    <td>No Value Needed</td>
+  </tr>
+<tr>
+    <td>Wait If Element Is Present</td>
+    <td><code>wait_if_present</code></td>
+    <td>Not Needed</td>
+    <td><i>"mobile.driver.independent_contractor.checkbox"</i></td>
+    <td>No Value Needed</td>
+  </tr>
   </tbody>
 </table>
 
@@ -364,6 +378,12 @@ Every automated instruction written inside **Column E** must follow a strict **3
 #### **# 🔄 “reload_app” Keyword Format #**
 `Reload User/Driver App Completely, reload_app,user/driver,`
 
+#### **# 🔄 “tap_if_present” Keyword Format #**
+`Tap If Element Is Present,tap_if_present,,"Locator"`
+
+#### **# 🔄 “wait_if_present” Keyword Format #**
+`Wait If Element Is Present,wait_if_present,,"Locator"`
+
 ---
 
 ## 🚀 1. Hybrid Orchestration (Multi-Session)
@@ -430,15 +450,16 @@ Your Excel sheet stays clean, readable, and focused purely on business logic. Us
 ## 📱 3. Mobile Specific Actions
 Handled by the `MobileActions.java` class. These keywords are optimized for Appium. To ensure maximum execution speed and stability, the framework explicitly prioritizes direct locators (**Accessibility ID**, **Resource ID**, and **Android UI Automator**) over slower XPath expressions.
 
-| Action | Phrase Examples                      | Description |
-| :--- |:-------------------------------------| :--- |
-| **`tap`** | tap, mobile click                    | Performs a touch interaction. Parses fast-execution locators like `accessibility=`, `id=`, or `automator=` before falling back to XPath. |
-| **`type`** | type, enter text                     | Clears the field and inputs text into the targeted element using optimized locators. |
+| Action                   | Phrase Examples                      | Description |
+|:-------------------------|:-------------------------------------| :--- |
+| **`tap`**                | tap, mobile click                    | Performs a touch interaction. Parses fast-execution locators like `accessibility=`, `id=`, or `automator=` before falling back to XPath. |
+| **`type`**               | type, enter text                     | Clears the field and inputs text into the targeted element using optimized locators. |
 | **`wait_until_visible`** | wait for element, wait until visible | Pauses execution dynamically until the target element is visible on the screen. |
-| **`swipe`** | swipe, scroll                        | Swipes the screen in the specified direction. Values: **up**, **down**. |
-| **`hide_keyboard`** | hide keyboard, close keypad          | Dismisses the mobile keyboard to prevent UI obstruction (essential for form flows). |
-| **`set_location`** | set location, geo location           | Inject custom GPS coordinates (Latitude;Longitude) into the active emulator mid-test. |
-| **`reload_app`** | reload app                           | Fully restarts the targeted app (`user`, `driver`, or `store`) from a clean baseline session state to bypass caching or hanging screens. |
+| **`swipe`**              | swipe, scroll                        | Swipes the screen in the specified direction. Values: **up**, **down**. |
+| **`hide_keyboard`**      | hide keyboard, close keypad          | Dismisses the mobile keyboard to prevent UI obstruction (essential for form flows). |
+| **`set_location`**       | set location, geo location           | Inject custom GPS coordinates (Latitude;Longitude) into the active emulator mid-test. |
+| **`reload_app`**         | reload app                           | Fully restarts the targeted app (`user`, `driver`, or `store`) from a clean baseline session state to bypass caching or hanging screens. |
+ | **`tap_if_present`**     |tap_if_present                      | Tap an element if present if not presrnt skips the step  |
 
 ### High-Speed Locator Syntax Examples
 When executing actions, use the prefix mapping below to bypass slow XPath parsing:
@@ -454,16 +475,17 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 ### Excel Test Sheet Example
 
-| Test Step Description                     | Action                           | Value                       | Target (Locator Strategy) |
-|:------------------------------------------|:---------------------------------|:----------------------------| :--- |
-| Click Get Started Button                  | **tap**                          | -                           | "accessibility=Get Started" |
-| Enter User Email Address                  | **type**                         | mohammed.faizal@example.com | "id=com.we1.customer:id/et_email" |
-| Click Form Submit Button                  | **tap**                          | -                           | "automator=new UiSelector().text("Submit")" |
-| Wait for Done                             | **wait_until_visible**           | -                           | "accessibility=Done" |
-| Hide Active Keyboard                      | **hide_keyboard**                | -                           | - |
-| Force Driver Location                     | **set_location**                 | 13.0533;80.2514             | - |
-| Scroll Down App Screen                    | **swipe**                        | **down**                    | - |
-| Reload Driver App                         | **reload_app**                   | **driver**                  | - |
+| Test Step Description                       | Action                           | Value                       | Target (Locator Strategy) |
+|:--------------------------------------------|:---------------------------------|:----------------------------| :--- |
+| Click Get Started Button                    | **tap**                          | -                           | "accessibility=Get Started" |
+| Enter User Email Address                    | **type**                         | mohammed.faizal@example.com | "id=com.we1.customer:id/et_email" |
+| Click Form Submit Button                    | **tap**                          | -                           | "automator=new UiSelector().text("Submit")" |
+| Wait for Done                               | **wait_until_visible**           | -                           | "accessibility=Done" |
+| Hide Active Keyboard                        | **hide_keyboard**                | -                           | - |
+| Force Driver Location                       | **set_location**                 | 13.0533;80.2514             | - |
+| Scroll Down App Screen                      | **swipe**                        | **down**                    | - |
+| Reload Driver App                           | **reload_app**                   | **driver**                  | - |
+| Tap if Element Present                      | **tap_if_present**               | -                           | "accesibility = submit" |
 ---
 
 ## 🛠️ 4. Navigation & System

@@ -54,6 +54,7 @@ public class StepParser {
 		// Device Back Button (e.g., "press back", "mobile back")
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(mobile_back|device_back)\\b.*", "mobile_back"));
 
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap_if_present|tapifpresent)\\b.*", "tap_if_present"));
 		// Tap (Alternative to click for mobile clarity)
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(tap)\\b.*", "tap"));
 
@@ -139,6 +140,7 @@ public class StepParser {
 		// 7. EXPLICIT WAITS
 		// ========================================
 		// --- NEW STRUCTURAL CHECKPOINT PATTERNS ---
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(wait_if_present|waitifpresent)\\b.*", "wait_if_present")); // 🚀 ADDED
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(wait_until_visible|wait_visible)\\b.*", "wait_until_visible"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+until\\s+visible\\b.*", "wait_until_visible"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bwait\\s+(for|until)\\s+visible\\b.*", "waitforvisible"));

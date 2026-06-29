@@ -1385,6 +1385,22 @@ public class TestExecutor {
 				}
 				break;
 
+			case "wait_if_present":
+				log("⏳ Checking Optional Structural Target: " + xpath);
+				try {
+					// Using a brief 5-second timeout so tests don't drag if the popup isn't there
+					WebDriverWait optionalCheck = new WebDriverWait(driver, Duration.ofSeconds(5));
+					org.openqa.selenium.By dynamicWaitLocator = getDynamicLocator(xpath);
+
+					optionalCheck.until(ExpectedConditions.visibilityOfElementLocated(dynamicWaitLocator));
+					log("✅ Optional element appeared and is visible! Proceeding.");
+				} catch (org.openqa.selenium.TimeoutException e) {
+					log("ℹ️ Optional element not found within timeout window. Skipping step safely...");
+				} catch (Exception e) {
+					log("ℹ️ Encountered an unexpected issue checking optional element. Skipping step safely...");
+				}
+				break;
+
 			case "sql_cleanup":
 				try {
 					// --- NEW UPDATE: Show 'Trash Bin' screen if in cleanup mode ---
@@ -1439,6 +1455,28 @@ public class TestExecutor {
 				} catch (Exception e) {
 					System.out.println("  ❌ Tap action failed: " + e.getMessage());
 					throw new RuntimeException("Failed to execute tap on locator: " + xpath, e);
+				}
+				break;
+
+			case "tap_if_present":
+				System.out.println("📱 Attempting Optional Tap on Locator Target: " + xpath);
+				try {
+					// Short duration wait to locate the interactive target quickly
+					WebDriverWait optionalTapWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+					org.openqa.selenium.By dynamicTapLocator = getDynamicLocator(xpath);
+
+					WebElement element = optionalTapWait.until(ExpectedConditions.elementToBeClickable(dynamicTapLocator));
+					element.click();
+
+					// Maintain your standard 2-second application state stability transition
+					Thread.sleep(2000);
+					System.out.println("  ✓ Optional element clicked successfully");
+				} catch (org.openqa.selenium.TimeoutException | org.openqa.selenium.NoSuchElementException e) {
+					System.out.println("  ℹ️ Optional click target absent from viewport context. Skipping step safely...");
+				} catch (org.openqa.selenium.StaleElementReferenceException staleEx) {
+					System.out.println("  ✓ Element went stale post-click. Transition successful.");
+				} catch (Exception e) {
+					System.out.println("  ℹ️ Tap action bypassed due to contextual absence: " + e.getMessage());
 				}
 				break;
 
