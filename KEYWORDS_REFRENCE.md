@@ -85,6 +85,13 @@ Every automated instruction written inside **Column E** must follow a strict **3
       <td>"web.global.action.submit"</td>
       <td>No Value Needed</td>
     </tr>
+<tr>
+    <td>Click If Element Is Present</td>
+    <td><code>click_if_present</code></td>
+    <td>Not Needed</td>
+    <td><i>"mobile.driver.independent_contractor.checkbox"</i></td>
+    <td>No Value Needed</td>
+  </tr>
     <tr>
       <td>Enter Bank Name</td>
       <td><code>type</code></td>

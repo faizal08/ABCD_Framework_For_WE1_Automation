@@ -785,6 +785,29 @@ public class TestExecutor {
 				log("  ✓ Clicked");
 				break;
 
+			case "click_if_present":
+				System.out.println("🌐 Attempting Optional Click on Web Locator Target: " + xpath);
+				try {
+					// Short 5-second duration wait to quickly locate the interactive web element
+					WebDriverWait optionalClickWait = new WebDriverWait(driver, Duration.ofSeconds(5));
+					org.openqa.selenium.By dynamicClickLocator = getDynamicLocator(xpath);
+
+					// Explicitly wait until the web element is clickable
+					WebElement element = optionalClickWait.until(ExpectedConditions.elementToBeClickable(dynamicClickLocator));
+					element.click();
+
+					// Maintain standard 2-second application state stability transition
+					Thread.sleep(2000);
+					System.out.println("  ✓ Optional web element clicked successfully");
+				} catch (org.openqa.selenium.TimeoutException | org.openqa.selenium.NoSuchElementException e) {
+					System.out.println("  ℹ️ Optional click target absent from web page context. Skipping step safely...");
+				} catch (org.openqa.selenium.StaleElementReferenceException staleEx) {
+					System.out.println("  ✓ Element went stale post-click. Page transition successful.");
+				} catch (Exception e) {
+					System.out.println("  ℹ️ Click action bypassed due to contextual absence: " + e.getMessage());
+				}
+				break;
+
 			case "select":
 				log("  → XPath/Locator: " + xpath);
 				log("  → Value to Select: " + value);
