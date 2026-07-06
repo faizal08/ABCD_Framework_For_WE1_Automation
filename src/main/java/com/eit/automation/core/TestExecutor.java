@@ -808,6 +808,29 @@ public class TestExecutor {
 				}
 				break;
 
+			case "hover":
+			case "movetoelement":
+				log("  → Hovering via XPath/Locator: " + xpath);
+				try {
+					if (driver instanceof io.appium.java_client.AppiumDriver) {
+						// MOBILE HOVER fallback (if needed, otherwise leave empty)
+						log("  ⚠️ Hover action not supported or required on mobile native view.");
+					} else {
+						// WEB HOVER LOGIC: Find the web element dynamically using the xpath string
+						if (xpath != null && !xpath.isEmpty()) {
+							org.openqa.selenium.WebElement targetElement = driver.findElement(org.openqa.selenium.By.xpath(xpath));
+
+							org.openqa.selenium.interactions.Actions actions = new org.openqa.selenium.interactions.Actions(driver);
+							actions.moveToElement(targetElement).perform();
+						}
+					}
+					log("  ✓ Hovered successfully");
+				} catch (Exception e) {
+					log("  ❌ Hover failed: " + e.getMessage());
+					throw e;
+				}
+				break;
+
 			case "select":
 				log("  → XPath/Locator: " + xpath);
 				log("  → Value to Select: " + value);

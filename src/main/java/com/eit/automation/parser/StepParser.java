@@ -120,6 +120,8 @@ public class StepParser {
 		// ========================================
 		// 4. CLICK (Generic fallback)
 		// ========================================
+		// Hover / Mouse Movements (For Tailwind menus and hover dropdowns)
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(hover|movetoelement|mouse_over|mouseover)\\b.*", "hover"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bclick\\b.*", "click"));
 		ACTION_PATTERNS.add(new StepPattern(".*\\bpress\\b(?!.*(enter|tab|key|escape)).*", "click")); // Press button
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(click_if_present|clickifpresent)\\b.*", "click_if_present"));

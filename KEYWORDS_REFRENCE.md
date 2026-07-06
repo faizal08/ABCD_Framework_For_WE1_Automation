@@ -92,6 +92,13 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <td><i>"mobile.driver.independent_contractor.checkbox"</i></td>
     <td>No Value Needed</td>
   </tr>
+<tr>
+    <td>Hover Over Element</td>
+    <td><code>hover</code></td>
+    <td>Not Needed</td>
+    <td><i>"mobile.driver.download.btn.active"</i></td>
+    <td>No Value Needed</td>
+  </tr>
     <tr>
       <td>Enter Bank Name</td>
       <td><code>type</code></td>
@@ -315,6 +322,9 @@ Every automated instruction written inside **Column E** must follow a strict **3
 #### **# 🔎 “type” Keyword Format for searching dynamically created phone Number #**
 `Filter Phone Number,type,{randomPhone},"Locator/Xpath"`
 
+#### **# 🔎 “hover” Keyword Format for searching dynamically created phone Number #**
+`Hover Over Element,hover,,"Locator/Xpath"`
+
 #### **# 📁 “uploadfile” Keyword Format #**
 `Upload Description,uploadfile,"src/main/resources/test-data/photoName.format","Locator/Xpath"`
 
@@ -527,23 +537,25 @@ When executing actions, use the prefix mapping below to bypass slow XPath parsin
 
 ## ⌨️ 5. Interactions & Input
 
-| Action | Phrase Examples (Natural Language) | Description |
-| :--- | :--- | :--- |
-| **type** | `enter the`, `type`, `input`, `fill` | Enters text into a field. |
-| **click** | `click`, `press` | Clicks a button, link, or element. |
-| **clear** | `clear text`, `empty field`, `remove value` | Wipes the content of an input box. |
-| **select** | `select [value]` | Selects from a dropdown (excludes file/radio). |
-| **tab** | `tab key`, `tab` | Simulates the **TAB** key. |
-| **press_enter** | `press enter`, `enter key` | Simulates the **ENTER** key. |
-| **arrows** | `arrow_down`, `arrow_up` | Simulates keyboard arrow keys. |
+| Action          | Phrase Examples (Natural Language)          | Description                                    |
+|:----------------|:--------------------------------------------|:-----------------------------------------------|
+| **type**        | `enter the`, `type`, `input`, `fill`        | Enters text into a field.                      |
+| **click**       | `click`, `press`                            | Clicks a button, link, or element.             |
+| **hover**       | `hover`                                     | hover Over a button, link, or element.         |
+| **clear**       | `clear text`, `empty field`, `remove value` | Wipes the content of an input box.             |
+| **select**      | `select [value]`                            | Selects from a dropdown (excludes file/radio). |
+| **tab**         | `tab key`, `tab`                            | Simulates the **TAB** key.                     |
+| **press_enter** | `press enter`, `enter key`                  | Simulates the **ENTER** key.                   |
+| **arrows**      | `arrow_down`, `arrow_up`                    | Simulates keyboard arrow keys.                 |
 
 **Excel Example:**
 
-| Test Step Description | Action | Value | Target (XPath) |
-| :--- | :--- | :--- | :--- |
-| Enter SuperAdmin Email | type | admin@gmail.com | "//input[@placeholder='Enter email']" |
-| Click Login Button | click | - | "//button[@type='submit']" |
-| Scroll Grid Right | tab | 5 | "//div[@class='grid-body']" |
+| Test Step Description  | Action | Value | Target (XPath) |
+|:-----------------------|:-------| :--- | :--- |
+| Enter SuperAdmin Email | type   | admin@gmail.com | "//input[@placeholder='Enter email']" |
+| Click Login Button     | click  | - | "//button[@type='submit']" |
+| Hover Over Button      | hover  | - | "//button[@type='submit']" |
+| Scroll Grid Right      | tab    | 5 | "//div[@class='grid-body']" |
 
 ---
 
