@@ -5,7 +5,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+import com.eit.automation.parser.StepParser;
 import org.openqa.selenium.*;
+import io.appium.java_client.AppiumBy;
 import org.openqa.selenium.interactions.PointerInput;
 import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.interactions.Pause;
@@ -1652,6 +1654,57 @@ public class TestExecutor {
 				);
 
 				log("  ✓ Component state updated successfully with date: " + excelDateValue);
+				break;
+
+			case "store_text":
+				log("  → Initiating generic text capture block...");
+				String targetLocator = xpath; // This maps to the Locator/Target column cell
+				String variableKey = value;   // This maps to the Value column cell (e.g., 'ride_otp')
+
+				By finalSelector;
+
+				// 1. Prefix Bypass Mapping Strategy for Performance Tuning
+				if (targetLocator.startsWith("accessibility=")) {
+					finalSelector = AppiumBy.accessibilityId(targetLocator.replace("accessibility=", ""));
+				} else if (targetLocator.startsWith("id=")) {
+					finalSelector = By.id(targetLocator.replace("id=", ""));
+				} else if (targetLocator.startsWith("automator=")) {
+					finalSelector = AppiumBy.androidUIAutomator(targetLocator.replace("automator=", ""));
+				} else {
+					// Fallback to standard core XPath evaluation
+					finalSelector = By.xpath(targetLocator);
+				}
+
+				log("  → Resolved element selector strategy: " + finalSelector.toString());
+
+				// 2. Explicit synchronization layer
+				WebElement targetElement = new WebDriverWait(driver, Duration.ofSeconds(10))
+						.until(ExpectedConditions.visibilityOfElementLocated(finalSelector));
+
+				// 3. Multilayered attribute extraction loop (Web + Mobile compatibility layers)
+				String rawExtractedText = targetElement.getText();
+
+				if (rawExtractedText == null || rawExtractedText.trim().isEmpty()) {
+					// Fallback for native Android View layouts containing accessibility content descriptors
+					rawExtractedText = targetElement.getAttribute("content-desc");
+
+					if (rawExtractedText == null || rawExtractedText.trim().isEmpty()) {
+						// Fallback for native input text components
+						rawExtractedText = targetElement.getAttribute("text");
+					}
+				}
+
+				// Fallback safeguard to prevent saving null strings into the cache
+				if (rawExtractedText == null) {
+					rawExtractedText = "";
+				} else {
+					rawExtractedText = rawExtractedText.trim();
+				}
+
+				// 4. Global Map State Registration using your StepParser helper
+				StepParser.saveRuntimeValue(variableKey, rawExtractedText);
+
+				log("  ✓ Successfully captured and stored value [" + rawExtractedText + "] inside variable: {" + variableKey + "}");
 				break;
 
 			case "set_location":

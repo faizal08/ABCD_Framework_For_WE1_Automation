@@ -132,6 +132,9 @@ public class StepParser {
 		ACTION_PATTERNS.add(new StepPattern(".*\\bpress\\b(?!.*(enter|tab|key|escape)).*", "click")); // Press button
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(click_if_present|clickifpresent)\\b.*", "click_if_present"));
 
+		// For Extracting Data From Xpath/Locators and store in an variable
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(store_text|capture_value)\\b.*", "store_text"));
+
 		// For Test Data Cleanup and Accessing Database
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(sql delete|db cleanup|execute sql)\\b.*", "sql_cleanup"));
 		// For fetching runtime values directly from database records
