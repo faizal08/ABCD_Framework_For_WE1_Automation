@@ -1717,6 +1717,18 @@ public class TestExecutor {
 				// 3. Multilayered attribute extraction loop (Web + Mobile compatibility layers)
 				String rawExtractedText = targetElement.getText();
 
+				// WEB INPUT SAFEGUARD: If getText() is empty, check "value".
+				// Try-catch prevents crashes on native mobile elements that do not support this attribute.
+				if (rawExtractedText == null || rawExtractedText.trim().isEmpty()) {
+					try {
+						rawExtractedText = targetElement.getAttribute("value");
+					} catch (Exception e) {
+						// Attribute unsupported on this driver/element, move to next fallback
+						rawExtractedText = null;
+					}
+				}
+
+				// Native Mobile Fallbacks
 				if (rawExtractedText == null || rawExtractedText.trim().isEmpty()) {
 					// Fallback for native Android View layouts containing accessibility content descriptors
 					rawExtractedText = targetElement.getAttribute("content-desc");
@@ -1738,6 +1750,39 @@ public class TestExecutor {
 				StepParser.saveRuntimeValue(variableKey, rawExtractedText);
 
 				log("  ✓ Successfully captured and stored value [" + rawExtractedText + "] inside variable: {" + variableKey + "}");
+				break;
+
+			case "verify_variables_match":
+				log("  → Initiating runtime variable comparison block...");
+
+				// Safeguard against missing columns in the excel row configuration
+				String firstVariableKey = (xpath != null) ? xpath.trim() : "";
+				String secondVariableKey = (value != null) ? value.trim() : "";
+
+				// Read the values dynamically from your updated StepParser tracking map
+				String firstValue = StepParser.getRuntimeValue(firstVariableKey);
+				String secondValue = StepParser.getRuntimeValue(secondVariableKey);
+
+				log(String.format("  🔍 [COMPARISON] Variable {%s} = '%s' | Variable {%s} = '%s'",
+						firstVariableKey, firstValue, secondVariableKey, secondValue));
+
+				// Safeguard against uninitialized variables
+				if (firstValue == null) {
+					throw new RuntimeException("Framework Variable context key {" + firstVariableKey + "} is completely uninitialized!");
+				}
+				if (secondValue == null) {
+					throw new RuntimeException("Framework Variable context key {" + secondVariableKey + "} is completely uninitialized!");
+				}
+
+				// Perform the explicit equality check
+				if (!firstValue.equals(secondValue)) {
+					throw new AssertionError(String.format(
+							"Value mismatch! Variable {%s} containing '%s' does not match Variable {%s} containing '%s'.",
+							firstVariableKey, firstValue, secondVariableKey, secondValue
+					));
+				}
+
+				log(String.format("  ✅ Verification Passed: Stored values for {%s} and {%s} match perfectly.", firstVariableKey, secondVariableKey));
 				break;
 
 			case "set_location":
@@ -1795,54 +1840,98 @@ public class TestExecutor {
 	}
 
 	private void drawPolygon(String xpath, String value) {
-		// GUARD: Mobile apps usually don't support this type of coordinate-based Actions drawing
 		if (driver instanceof io.appium.java_client.AppiumDriver) {
 			log("  ⚠ Skipping drawPolygon: Not supported on Mobile devices.");
 			return;
 		}
 
-		// UPDATED: Dynamic lookup support for modern web selectors
 		org.openqa.selenium.By canvasLocator = getDynamicLocator(xpath);
 		WebElement map = wait.until(ExpectedConditions.presenceOfElementLocated(canvasLocator));
 
-		// This line would crash on Mobile
+		// Scroll map securely into view center
 		((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].scrollIntoView({block: 'center'});", map);
 
+		// Get the absolute position of the map element relative to the client viewport
+		org.openqa.selenium.Point mapLocation = map.getLocation();
 		int width = map.getSize().getWidth();
 		int height = map.getSize().getHeight();
-		int maxX = (width / 2) - 20;
-		int maxY = (height / 2) - 20;
 
-		Actions actions = new Actions(driver);
+		int centerX = mapLocation.getX() + (width / 2);
+		int centerY = mapLocation.getY() + (height / 2);
+
+		// Safe boundaries to prevent pointer from running outside canvas dimensions
+		int maxX = (width / 2) - 30;
+		int maxY = (height / 2) - 30;
+
+		log(String.format("  🔍 [MAP METRICS] Location: (%d, %d) | Size: %dx%d | Calculated Center: (%d, %d)",
+				mapLocation.getX(), mapLocation.getY(), width, height, centerX, centerY));
+
 		String[] points = value.split("\\s*:\\s*");
+		if (points.length < 3) {
+			throw new RuntimeException("A polygon requires a minimum of 3 coordinate sets to close a shape area.");
+		}
 
-		int[] first = null;
+		int[][] absolutePoints = new int[points.length][2];
+		log("  ⚙️ [COORDINATE MATH TRANSLATION]:");
 		for (int i = 0; i < points.length; i++) {
-			int[] xy = parsePoint(points[i], maxX, maxY);
-			if (i == 0) first = xy;
-
-			actions.moveToElement(map, xy[0], xy[1])
-					.click()
-					.pause(Duration.ofMillis(700))
-					.perform();
+			int[] relativeXY = parsePoint(points[i], maxX, maxY);
+			absolutePoints[i][0] = centerX + relativeXY[0];
+			absolutePoints[i][1] = centerY + relativeXY[1];
+			log(String.format("     → Point %d: Excel Input [%s] -> Relative Offset (%d, %d) -> Target Viewport Pixels (%d, %d)",
+					(i + 1), points[i], relativeXY[0], relativeXY[1], absolutePoints[i][0], absolutePoints[i][1]));
 		}
 
-		if (first != null) {
-			actions.moveToElement(map, first[0], first[1]).perform();
+		log("  → Initializing raw W3C Pointer sequence for absolute coordinates...");
 
-			actions.click().pause(Duration.ofMillis(100))
-					.click().pause(Duration.ofMillis(100))
-					.click().pause(Duration.ofMillis(200))
-					.perform();
+		org.openqa.selenium.interactions.PointerInput mouse = new org.openqa.selenium.interactions.PointerInput(
+				org.openqa.selenium.interactions.PointerInput.Kind.MOUSE, "defaultMouse");
+		org.openqa.selenium.interactions.Sequence drawSequence = new org.openqa.selenium.interactions.Sequence(mouse, 1);
 
-			// Keys.TAB/ENTER are browser-specific
-			actions.sendKeys(org.openqa.selenium.Keys.TAB).pause(Duration.ofMillis(200))
-					.sendKeys(org.openqa.selenium.Keys.ENTER).perform();
+		// Step 1: Move mouse pointer to absolute Point 1 location natively
+		log(String.format("  ✍️ Queuing Step 1: Move to Point 1 (%d, %d) & Left Click", absolutePoints[0][0], absolutePoints[0][1]));
+		drawSequence.addAction(mouse.createPointerMove(Duration.ofMillis(500),
+				org.openqa.selenium.interactions.PointerInput.Origin.viewport(), absolutePoints[0][0], absolutePoints[0][1]));
+
+		drawSequence.addAction(mouse.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+		drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(150)));
+		drawSequence.addAction(mouse.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+		drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(600)));
+
+		// Step 2: Drag line sequence across remaining nodes
+		for (int i = 1; i < absolutePoints.length; i++) {
+			log(String.format("  ✍️ Queuing Step %d: Drag/Move to Point %d (%d, %d)", (i + 1), (i + 1), absolutePoints[i][0], absolutePoints[i][1]));
+
+			drawSequence.addAction(mouse.createPointerMove(Duration.ofMillis(600),
+					org.openqa.selenium.interactions.PointerInput.Origin.viewport(), absolutePoints[i][0], absolutePoints[i][1]));
+
+			if (i == absolutePoints.length - 1) {
+				log(String.format("  ⚡ Queuing Final Double-Click sequence at Point %d to close shape.", (i + 1)));
+				drawSequence.addAction(mouse.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(mouse.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(100)));
+				drawSequence.addAction(mouse.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(mouse.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(600)));
+			} else {
+				log(String.format("  🖱️ Queuing Single-Click marker drop at Point %d", (i + 1)));
+				drawSequence.addAction(mouse.createPointerDown(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(150)));
+				drawSequence.addAction(mouse.createPointerUp(org.openqa.selenium.interactions.PointerInput.MouseButton.LEFT.asArg()));
+				drawSequence.addAction(new org.openqa.selenium.interactions.Pause(mouse, Duration.ofMillis(600)));
+			}
 		}
 
-		log("  ✓ Polygon committed. Sending TAB to update form state.");
+		log("  🚀 Execution: Dispatching absolute coordinate vector trail to browser layer...");
+		((org.openqa.selenium.remote.RemoteWebDriver) driver).perform(java.util.Collections.singletonList(drawSequence));
+
+		try {
+			Thread.sleep(1000);
+		} catch (Exception e) {
+			log("  ℹ️ Stabilization wait skipped.");
+		}
+
+		log("  ✓ Polygon committed safely.");
 	}
-
 	private int[] parsePoint(String point, int maxX, int maxY) {
 		String[] xy = point.split(";");
 		if (xy.length < 2) {

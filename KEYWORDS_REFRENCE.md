@@ -121,7 +121,7 @@ Every automated instruction written inside **Column E** must follow a strict **3
       <td>Write the exact URL you need to open.</td>
     </tr>
     <tr>
-      <td>Wait for phot upload</td>
+      <td>Wait for photo upload</td>
       <td><code>wait</code></td>
       <td>3000</td>
       <td><i>Not Needed</i></td>
@@ -142,7 +142,7 @@ Every automated instruction written inside **Column E** must follow a strict **3
       <td>Provide the property locator key from which the tab action should begin, and the number of tabs required to reach the target element.</td>
     </tr>
     <tr>
-      <td>Check Deleivery Service Not exists</td>
+      <td>Check Delivery Service Not exists</td>
       <td><code>element_absent</code></td>
       <td><i>Not Needed</i></td>
       <td>"admin.city_admin.chk_web_delivery"</td>
@@ -158,7 +158,7 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <tr>
       <td>Map City Boundary</td>
       <td><code>draw    polygon</code></td>
-      <td>"-120;-120 : 120;-120 : 120;120 : -120;120 : -120;-120"</td>
+      <td>"-60;-60 : 60;-60 : 60;60 : -60;60 "</td>
       <td>"//div[@class='ol-layer']//canvas"</td>
       <td>The coordinate sequence string <b>must</b> be wrapped in double quotes. Use raw XPaths here (do not use property keys).</td>
     </tr>
@@ -210,6 +210,20 @@ Every automated instruction written inside **Column E** must follow a strict **3
     <td>2026-12-12</td>
     <td><i>admin.drivers.doc_expiry.input</i></td>
     <td>2026-12-12 [Enter Date In This Format YYYY-MM-DD]</td>
+  </tr>
+<tr>
+    <td>Extract Otp From Screen</td>
+    <td><code>store_text</code></td>
+    <td>ride_otp [Name of Variable ]</td>
+    <td><i>mobile.customer.otp_display_element</i></td>
+    <td>In value field add a variable name to store the extracted vlaue</td>
+  </tr>
+<tr>
+    <td>Compare Values Stored In Variable</td>
+    <td><code>verify_variables_match</code></td>
+    <td>emergencyPhone [Name of Variable 1]</td>
+    <td><i>saved_emergencyPhone [Name of Variable 2]</i></td>
+    <td>In Value and locator fields enter the variable names whose value is to be compared</td>
   </tr>
     <!-- MOBILE SPECIFIC KEYWORDS SUBSECTION -->
     <tr style="background-color: #fef3c7; font-weight: bold;">
@@ -353,7 +367,7 @@ Every automated instruction written inside **Column E** must follow a strict **3
 `Check Element exists,element_present,,"Locator/Xpath"`
 
 #### **# 🗺️ “draw polygon” Keyword Format #**
-`Map Polygon,draw polygon,"-120;-120 : 120;-120 : 120;120 : -120;120 : -120;-120[Enter Cordinate in this Format in double quotes]","Xpath[Use Xapth Only in This Case don’t use Locator]"`
+`Map Polygon,draw polygon,"-60;-60 : 60;-60 : 60;60 : -60;60[Enter Cordinate in this Format in double quotes]","Xpath[Use Xapth Only in This Case don’t use Locator]"`
 
 #### **# 🔽 “arrow_down” Keyword Format #**
 `Select From Dropdown,arrow_down,,"Locator/Xpath"`
@@ -366,6 +380,13 @@ Every automated instruction written inside **Column E** must follow a strict **3
 
 #### **# ✅ To "set_date" in Date Picker #**
 `Enter Date,set_date,2026-12-12[In YYYY-MM-DD Format],"Locator/Xpath"`
+
+
+#### **# ✅  "store_text" keyword to extract data from an xpath or locator #**
+`Extract OTP from Screen,store_text,ride_otp[variable name],"Locator/Xpath"`
+
+#### **# ✅  "verify_variables_match" keyword to verify value inside two variables are equal #**
+`Verify Emergeny Number Matches,verify_variables_match,emergencyPhone[variable name 1],stored_emergencyPhone[variable name 2]`
 
 ---
 
@@ -421,6 +442,8 @@ Every automated instruction written inside **Column E** must follow a strict **3
 
 #### **# 🔄 “fetch_db_value” Keyword Format #**
 `Fetch OTP/Refereal Code from DB,fetch_db_value,variable to store fetched balue from db,"Query"`
+
+
 
 ---
 
@@ -711,7 +734,27 @@ Wrap the variable name in curly braces `{}`.
 
 ---
 
-## 📊 13. Reporting & Debugging
+## 💾 13. Runtime Data Extraction & Variable Matching
+
+| Action | Phrase Examples (Natural Language) | Description |
+| :--- | :--- | :--- |
+| **store_text** | `store_text`, `capture_value` | Extracts visible text, web input values, or mobile descriptors and stores them in a temporary runtime variable map. |
+| **verify_variables_match** | `verify_variables_match`, `compare_variables`, `match_variables` | Evaluates two extracted runtime variables from the map and asserts that their values match exactly. |
+
+**Excel Examples:**
+
+| Test Step Description | Action | Value | Target (XPath) |
+| :--- | :--- | :--- | :--- |
+| Extract Emergency Contact Saved from Screen | store_text | `stored_emergency_number` | `"admin.customer.input_Emergency_phone"` |
+| Verify Emergency Number Matches | verify_variables_match | `stored_emergency_number` | `emergencyPhone` |
+
+> 💡 **Important Usage Rules:**
+> * **No Curly Braces `{}` in variables match:** When using `verify_variables_match`, type the raw variable names directly into the columns (e.g., `emergencyPhone`). Do not use `{}` here, as the action maps directly to the tracking keys.
+> * **Automatic Web Input Fallback:** The `store_text` keyword automatically detects if an element is a web form input field and extracts the hidden text using its `value` attribute seamlessly without breaking native mobile properties.
+
+---
+
+## 📊 15. Reporting & Debugging
 The framework is designed to make debugging easy:
 1.  **Red Box Highlighting:** If a step fails, the report screenshot will show a **Red Border** around the specific element that failed.
 2.  **Video Logs:** Check `test-outputs/videos` for a full recording of the execution.
@@ -719,7 +762,7 @@ The framework is designed to make debugging easy:
 
 ---
 
-## 🔗 14. Cross-Sheet Dependencies (Preconditions)
+## 🔗 16. Cross-Sheet Dependencies (Preconditions)
 
 The framework supports **Recursive Dependencies**. If one test suite (Sheet) requires data or a state created in another sheet, you can link them directly within the Excel file.
 
@@ -741,7 +784,7 @@ In the **Precondition** column (Column 5) of the **very first test case row** (R
 > **💡 Pro-Tip:** You can include as much descriptive text as you like in the Precondition column (authentication steps, system requirements, etc.). The framework is smart enough to find the `RunSheet:` keyword hidden anywhere in that text.
 
 ---
-## 🗄️ 15. Database Operations (Extraction & Cleanup)
+## 🗄️ 17. Database Operations (Extraction & Cleanup)
 
 This module allows the automation framework to interact directly with the PostgreSQL database. It supports two critical workflows: extracting live database values (like dynamic OTPs) mid-test to bypass hardware UI barriers, and clearing out test data at the end of a run to prevent duplicate entry blocks.
 
@@ -772,7 +815,7 @@ To prevent catastrophic queries or race conditions, the framework enforces the f
 
 ---
 
-### 📥 1. Extracting Dynamic Values (`fetch_db_value`)
+### 📥 18. Extracting Dynamic Values (`fetch_db_value`)
 
 When testing flows protected by random security codes or background IDs, you can query the DB mid-test and instantly inject the value into subsequent standard or native tap steps.
 
@@ -784,7 +827,7 @@ When testing flows protected by random security codes or background IDs, you can
 
 ---
 
-### 🧹 2. Database Maintenance (`sql_cleanup`)
+### 🧹 19. Database Maintenance (`sql_cleanup`)
 
 Removes test artifacts once a scenario completes to keep the automation environment clean and reusable.
 
@@ -830,7 +873,7 @@ Use these standardized blocks within your sheets across various modules:
 
 ----
 
-## 🔄 16. Sheet-Level Iteration (Stress & Loop Testing)
+## 🔄 20. Sheet-Level Iteration (Stress & Loop Testing)
 
 The framework supports **Dynamic Loop Execution** directly from your environment settings. If you need to stress-test a specific form, generate bulk test data, or repeatedly run a single test suite without restarting the browser or duplicating rows in Excel, you can define a repeat count using bracket notation `[X]`.
 
@@ -848,7 +891,7 @@ sheets.name=AddCustomer[5],AddCityArea,AddCityAdmin[50]
 
 ---
 
-## 🌍 17. Multi-Environment Configuration (CLI Support)
+## 🌍 21. Multi-Environment Configuration (CLI Support)
 
 The framework now supports **Dynamic Configuration Loading**. Instead of manually editing the `config.properties` file to switch between projects (e.g., ERP vs. WE1), you can maintain separate configuration files and trigger them via the command line.
 

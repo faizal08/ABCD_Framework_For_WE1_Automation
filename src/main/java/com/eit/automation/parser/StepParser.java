@@ -21,6 +21,14 @@ public class StepParser {
 			System.out.println("💾 [StepParser Saved] Key: " + key.trim() + " | Value: " + value.trim());
 		}
 	}
+
+	public static String getRuntimeValue(String key) {
+		if (key == null) {
+			return null;
+		}
+		// Using .trim() here to match how keys are saved into the map
+		return savedValues.get(key.trim());
+	}
 	private static DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss.SSS");
 
 	// Initializing Regex Patterns
@@ -86,6 +94,8 @@ public class StepParser {
 		// 1. VERIFICATION (Highest Priority - Assertions often start sentence)
 		// ========================================
 		ACTION_PATTERNS.add(new StepPattern(".*\\b(verify|check|assert|ensure)\\b.*", "verify"));
+		// For comparing the runtime text content of two stored framework variables
+		ACTION_PATTERNS.add(new StepPattern(".*\\b(verify_variables_match|compare_variables|match_variables)\\b.*", "verify_variables_match"));
 
 		// ========================================
 		// 2. NAVIGATION (High Priority)
