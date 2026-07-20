@@ -679,7 +679,7 @@ These keywords allow you to perform strict validation on whether an element shou
 | **drawpolygon** | `draw the polygon` | Specialized interaction for map elements. |
 | **verifygridvalue**| `verify grid` | Checks values inside a data table/grid. |
 
-**Excel Example:**
+**Excel Sheet Example:**
 
 | Test Step Description | Action      | Value                             | Target (XPath) |
 | :--- |:------------|:----------------------------------| :--- |
