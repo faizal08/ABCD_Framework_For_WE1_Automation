@@ -1,14 +1,14 @@
 # IDE Specific Files
 .idea/
-
-# Ignore Maven build output
-/target/
-
-# Ignore all test reports and the screenshots inside them
-test-reports/
-
-# Ignore IDE-specific files
+.vscode/
 .classpath
 .factorypath
 .project
 .settings/
+
+# Ignore Build Directories
+/target/
+/bin/
+
+# Ignore Test Reports & Screenshots
+test-reports/
