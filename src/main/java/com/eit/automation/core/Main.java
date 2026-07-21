@@ -187,7 +187,7 @@ public class Main {
         // --- MULTI-PRECONDITION SEARCH ---
         Row firstRow = sheet.getRow(1);
         if (firstRow != null) {
-            Cell preconditionCell = firstRow.getCell(5);
+            Cell preconditionCell = firstRow.getCell(7);
             if (preconditionCell != null) {
                 String fullText = preconditionCell.getStringCellValue();
 
@@ -231,8 +231,8 @@ public class Main {
             Row row = sheet.getRow(i);
             if (row == null) continue;
 
-            Cell testCaseCell = row.getCell(2);
-            Cell stepBlockCell = row.getCell(4);
+            Cell testCaseCell = row.getCell(3);
+            Cell stepBlockCell = row.getCell(6);
             if (testCaseCell == null || stepBlockCell == null) continue;
 
             String testCaseName = testCaseCell.getStringCellValue().trim();
