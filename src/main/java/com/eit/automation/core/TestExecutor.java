@@ -218,7 +218,12 @@ public class TestExecutor {
 			// Dismisses any system dialogs (like "Android Setup isn't responding") automatically
 			options.setCapability("autoDismissAlerts", true);
 
+            // Stops UiAutomator2 from waiting for UI animations to finish before typing
+			options.setCapability("appium:waitForIdleTimeout", 0);
 
+            // Bypasses character-by-character IME typing
+			options.setCapability("appium:unicodeKeyboard", true);
+			options.setCapability("appium:resetKeyboard", true);
 
 			// CRITICAL FIX: Set to false while noReset is false so UIAutomator2 can properly hook the app process
 			options.setCapability("skipDeviceInitialization", false);
